@@ -369,7 +369,10 @@
             <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
             Savvy
         </div>
-        <a href="#signup" class="nav-cta">Request Access</a>
+        <div class="nav-actions" style="display:flex; align-items:center; gap:22px;">
+            <a href="https://app.withsavvy.ai/" class="nav-signin" data-cta="nav_signin" style="color:var(--text-heading); text-decoration:none; font-weight:600; font-size:0.9rem;">Sign in</a>
+            <a href="https://app.withsavvy.ai/#sign-up" class="nav-cta" data-cta="nav">Get started free</a>
+        </div>
     </nav>
 
     <!-- HERO -->
@@ -379,8 +382,8 @@
             <p class="hero-sub">
                 Savvy's agents watch over every perk, credit, and deadline across all your benefits — so nothing falls through the cracks.
             </p>
-            <a href="#signup" class="btn-primary">
-                Request Early Access
+            <a href="https://app.withsavvy.ai/#sign-up" class="btn-primary" data-cta="hero">
+                Get started free
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
             <div class="hero-micro">
@@ -457,8 +460,8 @@
                 <div class="evidence-total-value">$<span class="counter-amount">0</span></div>
                 <p class="evidence-context">That's <strong>$685 in year one</strong> — from 4 cards and 5 minutes of setup.</p>
                 <p class="evidence-payoff">You're already paying for this. <strong>Savvy just makes sure you actually use it.</strong></p>
-                <a href="#signup" class="evidence-cta">
-                    Get early access
+                <a href="https://app.withsavvy.ai/#sign-up" class="evidence-cta" data-cta="evidence">
+                    Get started free
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </a>
             </div>
@@ -582,19 +585,23 @@
 
     <!-- CTA -->
     <section class="cta-section" id="signup">
-        <div class="cta-badge">Early Access — Limited Spots</div>
-        <h2>We're building Savvy <span class="serif">around you.</span></h2>
-        <p>We're onboarding a small group of early members first — learning your cards, your spending, your life — so the AI agents work perfectly from day one.</p>
-        <form class="cta-form" id="waitlistForm">
+        <div class="cta-badge">Free for 30 days · No card required</div>
+        <h2>Start using the cards <span class="serif">you already pay for.</span></h2>
+        <p>Add your cards in a couple of minutes and see what you've been leaving on the table. No bank login required to start.</p>
+        <a href="https://app.withsavvy.ai/#sign-up" class="btn-primary" data-cta="signup_primary">
+            Get started free
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <div class="cta-guarantee-note">🔒 No bank login required to start · Cancel anytime</div>
+        <form class="cta-form" id="waitlistForm" style="margin-top:32px;">
+            <p style="font-size:0.9rem; color:var(--text-secondary); margin:0 0 12px;">Not ready yet? Leave your email and we'll keep you posted.</p>
             <div class="cta-form-row">
                 <input type="email" id="emailInput" placeholder="Your best email" required>
-                <input type="tel" id="phoneInput" placeholder="Phone number" required>
+                <input type="tel" id="phoneInput" placeholder="Phone (optional)">
             </div>
-            <button type="submit" class="btn-primary" id="submitBtn">Request Early Access</button>
+            <button type="submit" class="btn-primary" id="submitBtn" style="background:transparent; color:var(--text-secondary); border:1px solid var(--text-secondary);">Keep me posted</button>
         </form>
         <div class="form-message" id="formMessage"></div>
-        <div class="cta-guarantee-note">🔒 We'll never spam you · Unsubscribe anytime</div>
-        <p class="cta-note">Onboarding the first 200 members now. Early members get Savvy free.</p>
     </section>
 
     <!-- FOOTER -->
@@ -608,6 +615,18 @@
         const SAVVY_API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:3000'
             : 'https://savvy-backend-qyfl.onrender.com';
+
+        // ── Lightweight funnel analytics ──────────────────────────────────────
+        // Fires events to dataLayer (GA4/GTM) + Plausible when present; a harmless
+        // no-op until an analytics snippet is added to <head>. See ANALYTICS.md.
+        function track(event, props = {}) {
+            try {
+                (window.dataLayer = window.dataLayer || []).push({ event, ...props });
+                if (typeof window.plausible === 'function') window.plausible(event, { props });
+            } catch (_) { /* analytics must never break the page */ }
+        }
+        document.querySelectorAll('[data-cta]').forEach((el) =>
+            el.addEventListener('click', () => track('cta_click', { location: el.getAttribute('data-cta') })));
 
         const form = document.getElementById('waitlistForm');
         const emailInput = document.getElementById('emailInput');
@@ -628,16 +647,17 @@
             const email = emailInput.value.trim();
             const phoneRaw = phoneInput.value.replace(/\D/g, '');
             if (!email) return;
-            if (phoneRaw.length < 10) { formMessage.textContent = 'Please enter a valid 10-digit phone number.'; formMessage.className = 'form-message error'; return; }
-            const phone = '+1' + phoneRaw;
-            submitBtn.disabled = true; submitBtn.textContent = 'Requesting...';
+            // Phone is optional now — only validate if the user typed something.
+            if (phoneRaw.length > 0 && phoneRaw.length < 10) { formMessage.textContent = 'That number looks incomplete — leave it blank or enter 10 digits.'; formMessage.className = 'form-message error'; return; }
+            const phone = phoneRaw.length === 10 ? '+1' + phoneRaw : undefined;
+            submitBtn.disabled = true; submitBtn.textContent = 'Sending...';
             try {
                 const response = await fetch(`${SAVVY_API_BASE}/api/waitlist/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, phone }) });
                 const data = await response.json();
-                if (response.ok) { formMessage.textContent = "You're on the list. We'll be in touch soon."; formMessage.className = 'form-message success'; emailInput.value = ''; phoneInput.value = ''; }
+                if (response.ok) { formMessage.textContent = "You're on the list. We'll keep you posted."; formMessage.className = 'form-message success'; emailInput.value = ''; phoneInput.value = ''; track('waitlist_submit'); }
                 else { formMessage.textContent = data.error || 'Something went wrong. Please try again.'; formMessage.className = 'form-message error'; }
             } catch { formMessage.textContent = 'Unable to connect. Please try again later.'; formMessage.className = 'form-message error'; }
-            finally { submitBtn.disabled = false; submitBtn.textContent = 'Request Early Access'; }
+            finally { submitBtn.disabled = false; submitBtn.textContent = 'Keep me posted'; }
         });
 
         // Rotating notifications
