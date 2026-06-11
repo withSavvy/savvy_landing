@@ -369,7 +369,7 @@
             <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
             Savvy
         </div>
-        <a href="#signup" class="nav-cta">Request Access</a>
+        <a href="https://app.withsavvy.ai/#sign-up" class="nav-cta">Get Started</a>
     </nav>
 
     <!-- HERO -->
@@ -379,8 +379,8 @@
             <p class="hero-sub">
                 Savvy's agents watch over every perk, credit, and deadline across all your benefits — so nothing falls through the cracks.
             </p>
-            <a href="#signup" class="btn-primary">
-                Request Early Access
+            <a href="https://app.withsavvy.ai/#sign-up" class="btn-primary">
+                Get Started Free
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
             <div class="hero-micro">
@@ -457,8 +457,8 @@
                 <div class="evidence-total-value">$<span class="counter-amount">0</span></div>
                 <p class="evidence-context">That's <strong>$685 in year one</strong> — from 4 cards and 5 minutes of setup.</p>
                 <p class="evidence-payoff">You're already paying for this. <strong>Savvy just makes sure you actually use it.</strong></p>
-                <a href="#signup" class="evidence-cta">
-                    Get early access
+                <a href="https://app.withsavvy.ai/#sign-up" class="evidence-cta">
+                    Get started free
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </a>
             </div>
@@ -582,19 +582,14 @@
 
     <!-- CTA -->
     <section class="cta-section" id="signup">
-        <div class="cta-badge">Early Access — Limited Spots</div>
-        <h2>We're building Savvy <span class="serif">around you.</span></h2>
-        <p>We're onboarding a small group of early members first — learning your cards, your spending, your life — so the AI agents work perfectly from day one.</p>
-        <form class="cta-form" id="waitlistForm">
-            <div class="cta-form-row">
-                <input type="email" id="emailInput" placeholder="Your best email" required>
-                <input type="tel" id="phoneInput" placeholder="Phone number" required>
-            </div>
-            <button type="submit" class="btn-primary" id="submitBtn">Request Early Access</button>
-        </form>
-        <div class="form-message" id="formMessage"></div>
-        <div class="cta-guarantee-note">🔒 We'll never spam you · Unsubscribe anytime</div>
-        <p class="cta-note">Onboarding the first 200 members now. Early members get Savvy free.</p>
+        <div class="cta-badge">Free for 30 Days</div>
+        <h2>Start using what you're <span class="serif">already paying for.</span></h2>
+        <p>Set up in 5 minutes. No bank login required. Your AI agents start working immediately.</p>
+        <a href="https://app.withsavvy.ai/#sign-up" class="btn-primary" style="font-size: 1.1rem; padding: 1.1rem 2.5rem; margin-bottom: 1rem;">
+            Get Started Free
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <p class="cta-note" style="margin-top: 0.5rem;">No credit card required · Cancel anytime</p>
     </section>
 
     <!-- FOOTER -->
@@ -605,41 +600,6 @@
     </footer>
 
     <script>
-        const SAVVY_API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000'
-            : 'https://savvy-backend-qyfl.onrender.com';
-
-        const form = document.getElementById('waitlistForm');
-        const emailInput = document.getElementById('emailInput');
-        const phoneInput = document.getElementById('phoneInput');
-        const submitBtn = document.getElementById('submitBtn');
-        const formMessage = document.getElementById('formMessage');
-
-        phoneInput.addEventListener('input', (e) => {
-            let digits = e.target.value.replace(/\D/g, '');
-            if (digits.length > 10) digits = digits.slice(0, 10);
-            if (digits.length >= 7) e.target.value = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
-            else if (digits.length >= 4) e.target.value = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
-            else if (digits.length > 0) e.target.value = `(${digits}`;
-        });
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = emailInput.value.trim();
-            const phoneRaw = phoneInput.value.replace(/\D/g, '');
-            if (!email) return;
-            if (phoneRaw.length < 10) { formMessage.textContent = 'Please enter a valid 10-digit phone number.'; formMessage.className = 'form-message error'; return; }
-            const phone = '+1' + phoneRaw;
-            submitBtn.disabled = true; submitBtn.textContent = 'Requesting...';
-            try {
-                const response = await fetch(`${SAVVY_API_BASE}/api/waitlist/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, phone }) });
-                const data = await response.json();
-                if (response.ok) { formMessage.textContent = "You're on the list. We'll be in touch soon."; formMessage.className = 'form-message success'; emailInput.value = ''; phoneInput.value = ''; }
-                else { formMessage.textContent = data.error || 'Something went wrong. Please try again.'; formMessage.className = 'form-message error'; }
-            } catch { formMessage.textContent = 'Unable to connect. Please try again later.'; formMessage.className = 'form-message error'; }
-            finally { submitBtn.disabled = false; submitBtn.textContent = 'Request Early Access'; }
-        });
-
         // Rotating notifications
         const messages = document.querySelectorAll('.notif-text');
         let currentMsg = 0;
