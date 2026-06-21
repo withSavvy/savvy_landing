@@ -10,3 +10,6 @@ backend/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# Worktree-isolation scratch (new-session.sh) — never stage a checked-out worktree
+.worktrees/
