@@ -1,0 +1,157 @@
+# Savvy Shared PR Compliance Checklist
+#
+# Qodo PR-Agent reads this file and enforces each rule on every PR.
+# Violations add a "Failed compliance check" label and block merge.
+#
+# This is the shared baseline for non-core repos (landing, email worker,
+# MCP server). It covers universal security and code quality rules that
+# apply to all Savvy services.
+
+pr_compliances:
+
+  # ── Security ─────────────────────────────────────────────────────────
+
+  - title: "No Hardcoded Secrets"
+    compliance_label: true
+    objective: >
+      API keys, tokens, passwords, and connection strings must never appear
+      in source code. Use environment variables or a secret manager.
+    success_criteria: >
+      Secrets loaded from process.env, .env files (gitignored), or a secret
+      manager. Environment variables validated at startup with clear error
+      messages for missing required secrets.
+    failure_criteria: >
+      Hardcoded strings matching patterns like sk_live_*, pk_live_*, API key
+      formats, bearer tokens, database connection strings with credentials,
+      or any string that looks like a secret in source code (not .env).
+
+  - title: "Error Handling on External Calls"
+    compliance_label: true
+    objective: >
+      All external API calls must have proper error handling with structured
+      logging. Never expose internal details in error responses.
+    success_criteria: >
+      External calls wrapped in try-catch. Catch blocks log the error with
+      context (operation name, relevant IDs) using the structured logger.
+      Error responses return user-friendly messages without leaking internal
+      details.
+    failure_criteria: >
+      External API calls without try-catch. Empty catch blocks. Catch blocks
+      that only console.log without context. Error responses that expose
+      stack traces, internal IDs, or API keys to the client.
+
+  - title: "Input Validation"
+    compliance_label: true
+    objective: >
+      All user input and external data must be validated before processing.
+      Use schema-based validation (Zod, Joi, or equivalent).
+    success_criteria: >
+      User inputs validated with schema-based validation. API endpoints
+      validate request bodies/params before processing. Validation errors
+      return clear, actionable messages.
+    failure_criteria: >
+      Processing user input without validation. Type coercion without
+      validation (e.g., Number(req.body.amount) without checking). Missing
+      parameter validation on API endpoints.
+
+  # ── Code Quality ─────────────────────────────────────────────────────
+
+  - title: "No console.log in Production Code"
+    compliance_label: true
+    objective: >
+      Use the structured logger instead of console.log in production code.
+      console.log is acceptable only in test files and CLI scripts.
+    success_criteria: >
+      Production code uses logger.info/warn/error with structured context.
+      console.log only appears in files under __tests__/, scripts/, or
+      development utilities.
+    failure_criteria: >
+      console.log, console.warn, console.error in production source files
+      (src/ excluding __tests__/). Debug output left in committed code.
+
+  - title: "No Float Currency Math"
+    compliance_label: true
+    objective: >
+      If this repo handles any monetary values, they must be represented
+      as integer cents, never floating-point.
+    success_criteria: >
+      Monetary fields use integer types. Arithmetic on monetary values uses
+      integer math.
+    failure_criteria: >
+      parseFloat(), toFixed(), or Number() on monetary variables.
+      Floating-point arithmetic on amounts, prices, or fees.
+
+  - title: "TypeScript Strict Mode"
+    compliance_label: true
+    objective: >
+      All TypeScript code must compile under strict mode. No use of 'any'
+      type except in explicitly justified escape hatches.
+    success_criteria: >
+      tsconfig.json has strict: true. Explicit types on function parameters
+      and return values. 'as any' only with a // SAFETY comment explaining why.
+    failure_criteria: >
+      Use of 'any' type without justification comment. Missing type
+      annotations on public functions. Type assertions (as X) used to
+      silence type errors rather than fixing them.
+
+  # ── Security (2026-06 audit) ─────────────────────────────────────────
+
+  - title: "Secrets"
+    compliance_label: true
+    objective: "no secret in code/config/history; secrets come from env / secret-store only; no committed .env/.dev.vars; no secret in wrangler [vars]; secret comparisons are constant-time."
+    success_criteria: "Secrets are managed securely via environment variables or secret stores."
+    failure_criteria: "Secrets hardcoded, committed .env files, or non-constant-time comparisons."
+
+  - title: "Auth (fail CLOSED)"
+    compliance_label: true
+    objective: "no 'fallback to open / any authenticated user' when a key/secret is unset; webhook signatures verified AND mandatory in production; admin routes gated by a real admin check."
+    success_criteria: "Proper fail-closed auth handling."
+    failure_criteria: "Fallback to open access or missing webhook signature verification."
+
+  - title: "AuthZ / IDOR"
+    compliance_label: true
+    objective: "every resource read/write is scoped to the caller's userId/tenant (never an id from the body/query alone)."
+    success_criteria: "Authorization strictly tied to caller's identity."
+    failure_criteria: "Resource access permitted solely by request body/query ID."
+
+  - title: "DB / RLS (Supabase)"
+    compliance_label: true
+    objective: "RLS enabled + FORCE on user/PII tables; policies scoped to the user; no GRANT ALL … TO anon; SECURITY DEFINER functions pin search_path and are revoked from anon."
+    success_criteria: "Strict RLS and function security."
+    failure_criteria: "GRANT ALL TO anon, missing RLS, or unprotected SECURITY DEFINER."
+
+  - title: "Injection"
+    compliance_label: true
+    objective: "parameterized SQL only; PostgREST .or()/.ilike() inputs sanitized; no string-built queries."
+    success_criteria: "Safe query construction."
+    failure_criteria: "String-built SQL queries."
+
+  - title: "SSRF"
+    compliance_label: true
+    objective: "user/LLM/email-supplied URLs validated (https + non-private host) before any server-side fetch."
+    success_criteria: "URL validation before fetches."
+    failure_criteria: "Server-side fetch of unvalidated URLs."
+
+  - title: "Indirect prompt-injection"
+    compliance_label: true
+    objective: "untrusted email/web content is delimited as data in LLM prompts; LLM-extracted fields are validated before DB write/display (URLs https-only)."
+    success_criteria: "Content delimited; extracted fields validated."
+    failure_criteria: "Untrusted content injected without delimiters."
+
+  - title: "Error handling"
+    compliance_label: true
+    objective: "no raw error.message/stack returned to clients."
+    success_criteria: "Sanitized error responses."
+    failure_criteria: "Stack traces or raw error messages leaked to clients."
+
+  - title: "Dependencies"
+    compliance_label: true
+    objective: "npm audit shows 0 HIGH before merge."
+    success_criteria: "Clean dependency audit."
+    failure_criteria: "HIGH severity vulnerabilities present."
+
+  - title: "Repo hygiene"
+    compliance_label: true
+    objective: "explicit-pathspec commits (never git add -A); no --no-verify."
+    success_criteria: "Clean, specific commits."
+    failure_criteria: "Use of git add -A or bypassing hooks."
