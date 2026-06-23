@@ -1,0 +1,52 @@
+name: auto-arm-merge
+
+on:
+  pull_request_target:
+    types: [opened, ready_for_review]
+
+jobs:
+  arm-or-hold:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check for hold conditions and arm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          LABELS=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH")
+          if echo "$LABELS" | grep -E -i '^(do-not-merge|reviewing)$' >/dev/null; then
+            echo "PR already carries a hold label. Skipping auto-merge arming."
+            exit 0
+          fi
+          
+          FILES=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json files -q '.files[].path')
+          BRICK_RISK=false
+          while IFS= read -r file; do
+            if [[ -z "$file" ]]; then continue; fi
+            if [[ "$file" =~ ^\.claude/scripts/vm-apply-config\.sh$ ]] || \
+               [[ "$file" =~ ^\.claude/scripts/sync-overnight-to-vm\.sh$ ]] || \
+               [[ "$file" =~ ^\.claude/scheduled-tasks/vm\.crontab$ ]] || \
+               [[ "$file" =~ ^\.claude/scheduled-tasks/run-overnight-headless\.sh$ ]] || \
+               [[ "$file" =~ /supabase/migrations/ ]] || \
+               [[ "$file" =~ writeExtractedBenefits ]] || \
+               [[ "$file" =~ credit-fabrication-guard ]] || \
+               [[ "$file" =~ card\[-_\]benefits ]] || \
+               [[ "$file" =~ ^\.github/workflows/ ]] || \
+               [[ "$file" =~ deploy ]]; then
+              BRICK_RISK=true
+              echo "Brick risk path detected: $file"
+              break
+            fi
+          done <<< "$FILES"
+          
+          if [ "$BRICK_RISK" = true ]; then
+            echo "Applying do-not-merge label due to brick-risk path."
+            gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "do-not-merge"
+            exit 0
+          fi
+          
+          echo "No hold labels or brick risks found. Arming auto-merge (squash)."
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --squash
