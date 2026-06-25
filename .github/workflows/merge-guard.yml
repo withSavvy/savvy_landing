@@ -1,0 +1,22 @@
+name: merge-guard
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize, reopened]
+
+jobs:
+  merge-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for hold labels
+        run: |
+          # Read labels directly from the GitHub context payload
+          LABELS=$(jq '.pull_request.labels[].name' "$GITHUB_EVENT_PATH")
+
+          # Check if 'do-not-merge' or 'reviewing' labels are present
+          if echo "$LABELS" | grep -E -i '"(do-not-merge|reviewing)"'; then
+            echo "::error::PR is on hold due to 'do-not-merge' or 'reviewing' label."
+            exit 1
+          fi
+
+          echo "PR is clear to merge."
