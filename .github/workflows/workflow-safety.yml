@@ -31,7 +31,7 @@ concurrency:
 jobs:
   workflow-safety:
     name: workflow-safety
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7

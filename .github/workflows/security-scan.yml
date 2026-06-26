@@ -19,7 +19,7 @@ concurrency:
 jobs:
   gitleaks:
     name: Gitleaks (secret scan)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - name: Checkout (full history for base sha resolution)

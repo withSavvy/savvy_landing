@@ -11,7 +11,7 @@ concurrency:
 jobs:
   gate:
     name: gate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
 
