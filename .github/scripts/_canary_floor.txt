@@ -1,0 +1,1 @@
+landing canary floor probe — .github/scripts edit must trip the CI-surface hard-block floor.
