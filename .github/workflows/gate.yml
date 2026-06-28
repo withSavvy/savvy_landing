@@ -91,19 +91,38 @@ jobs:
             -- bash -c '
               set -euo pipefail
               GL_VERSION="8.30.1"
-              if command -v gitleaks >/dev/null 2>&1 && gitleaks version 2>/dev/null | grep -q "${GL_VERSION}"; then
-                echo "gitleaks ${GL_VERSION} already installed — skipping download"; exit 0
+              # Resolve a runner-scoped, persistent, writable install dir so we never
+              # need root or /usr/local/bin write access. RUNNER_TOOL_CACHE is set on
+              # both GitHub-hosted runners and actions/runner self-hosted runners; fall
+              # back to a HOME cache otherwise. This removes the fragile manual ACL the
+              # self-hosted VM runner needed for /usr/local/bin (the gitleaks-install
+              # gate-infra-error root cause).
+              if [ -n "${RUNNER_TOOL_CACHE:-}" ]; then
+                GL_DIR="${RUNNER_TOOL_CACHE}/gitleaks/${GL_VERSION}"
+              else
+                GL_DIR="${HOME}/.cache/gitleaks/${GL_VERSION}"
               fi
-              GL_BASE="https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}"
-              GL_TARBALL="gitleaks_${GL_VERSION}_linux_x64.tar.gz"
-              GL_SUMS="gitleaks_${GL_VERSION}_checksums.txt"
-              cd /tmp
-              curl -fsSL "${GL_BASE}/${GL_TARBALL}" -o "${GL_TARBALL}"
-              curl -fsSL "${GL_BASE}/${GL_SUMS}"    -o "${GL_SUMS}"
-              grep "  ${GL_TARBALL}\$" "${GL_SUMS}" | sha256sum -c -
-              tar --overwrite -xzf "${GL_TARBALL}" -C /usr/local/bin gitleaks
-              chmod +x /usr/local/bin/gitleaks
-              gitleaks version
+              GL_BIN="${GL_DIR}/gitleaks"
+              # Idempotency pinned to the exact version binary (not command -v, which
+              # would match a stale /usr/local/bin install of a different version).
+              if [ -x "${GL_BIN}" ] && "${GL_BIN}" version 2>/dev/null | grep -q "${GL_VERSION}"; then
+                echo "gitleaks ${GL_VERSION} already installed at ${GL_BIN} — skipping download"
+              else
+                GL_BASE="https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}"
+                GL_TARBALL="gitleaks_${GL_VERSION}_linux_x64.tar.gz"
+                GL_SUMS="gitleaks_${GL_VERSION}_checksums.txt"
+                mkdir -p "${GL_DIR}"
+                cd /tmp
+                curl -fsSL "${GL_BASE}/${GL_TARBALL}" -o "${GL_TARBALL}"
+                curl -fsSL "${GL_BASE}/${GL_SUMS}"    -o "${GL_SUMS}"
+                # single unified checksums file lists all assets; verify only our tarball
+                grep "  ${GL_TARBALL}\$" "${GL_SUMS}" | sha256sum -c -
+                tar --overwrite -xzf "${GL_TARBALL}" -C "${GL_DIR}" gitleaks
+                chmod +x "${GL_BIN}"
+              fi
+              # Make gitleaks available to subsequent steps (e.g. the scan step) on PATH.
+              echo "${GL_DIR}" >> "${GITHUB_PATH}"
+              "${GL_BIN}" version
             '
 
       # Scan the PR commit range. CRITICAL: gitleaks returns exit 1 for BOTH a real
