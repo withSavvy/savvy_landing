@@ -1,0 +1,12 @@
+# CODEOWNERS — prod-deploy change gate
+#
+# Any PR touching the paths below requires @Sara3's review before merge
+# (enforced via branch protection: require_code_owner_reviews=true on main).
+# Scope is deliberately narrow (prod deploy config + deploy workflow) so routine
+# and automation PRs are NOT gated. Reviewers need write/admin access.
+
+# Prod deploy configuration (Cloudflare)
+/wrangler.jsonc                                @Sara3
+
+# Deploy workflow
+/.github/workflows/deploy.yml                  @Sara3
