@@ -2,7 +2,7 @@ name: auto-arm-merge
 
 on:
   pull_request_target:
-    types: [opened, ready_for_review]
+    types: [opened, ready_for_review, labeled]
 
 jobs:
   arm-or-hold:
@@ -17,8 +17,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           LABELS=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH")
-          if echo "$LABELS" | grep -E -i '^(do-not-merge|reviewing)$' >/dev/null; then
-            echo "PR already carries a hold label. Skipping auto-merge arming."
+          if echo "$LABELS" | grep -E -i '^(do-not-merge|reviewing|needs-human-review)$' >/dev/null; then
+            echo "PR carries a hold label — disarming any existing auto-merge and holding."
+            gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --disable-auto 2>/dev/null || true
             exit 0
           fi
           
