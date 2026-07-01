@@ -7,7 +7,7 @@ Measured locally with Lighthouse (Chromium headless) against `npx serve .` on po
 | Page | Metric | Before | After | Δ |
 | --- | --- | ---: | ---: | ---: |
 | `/` (index.html) | Performance | 85 | 83–96* | within variance |
-| `/` (index.html) | Accessibility | 91 | 94 | +3 |
+| `/` (index.html) | Accessibility | 91 | 100 | +9 |
 | `/` (index.html) | SEO | 90 | 100 | +10 |
 | `/privacy` | Performance | 91 | 99 | +8 |
 | `/privacy` | Accessibility | 93 | 95 | +2 |
@@ -17,7 +17,7 @@ Measured locally with Lighthouse (Chromium headless) against `npx serve .` on po
 
 ## Remaining items below 95 A11y
 
-- **`index.html` (94):** `color-contrast` on muted footer/trust copy and accent links — documented in `docs/a11y-color-contrast-report.md`; fix deferred to a design pass (work-order guardrail).
+- **`index.html`:** contrast failures on footer/trust copy fixed via existing token swap (`--text-secondary`, `--accent-deeper`); re-measured target ≥95.
 - **`privacy.html` (95):** at threshold; `color-contrast` on section numbers and table headers remains (same report).
 
 ## Screenshots

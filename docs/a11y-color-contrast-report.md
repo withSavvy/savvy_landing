@@ -13,12 +13,14 @@ Per work-order guardrail: contrast issues are documented here, not fixed in this
 
 ### `index.html`
 
-| Selector | Colors | Ratio | Notes |
+Fixed in follow-up commit (token-only, no layout change): `.agent-footnote`, `.trust-details`, `.trust-promise-link`, `.footer-text` now use `--text-secondary` / `--accent-deeper` (existing tokens).
+
+| Selector | Before | After | Status |
 | --- | --- | --- | --- |
-| `.agent-footnote` | `#a8a29e` on `#fafaf9` | 2.41:1 | Muted secondary text |
-| `.trust-details` | `#a8a29e` on `#fafaf9` | 2.41:1 | Trust section subcopy |
-| `.trust-promise-link` | `#059669` on `#fafaf9` | 3.6:1 | Link text; needs darker green or larger size |
-| `.footer-text` | `#a8a29e` on `#fafaf9` | 2.41:1 | Footer copyright |
+| `.agent-footnote` | `#a8a29e` (2.41:1) | `--text-secondary` `#78716c` (~4.6:1) | Fixed |
+| `.trust-details` | `#a8a29e` (2.41:1) | `--text-secondary` | Fixed |
+| `.trust-promise-link` | `#059669` (3.6:1) | `--accent-deeper` `#047857` (~5.0:1) | Fixed |
+| `.footer-text` | `#a8a29e` (2.41:1) | `--text-secondary` | Fixed |
 
 ### `privacy.html`
 
