@@ -237,7 +237,7 @@ jobs:
   review:
     name: review
     needs: [gitleaks, workflow-safety]
-    if: always()
+    if: (always()) && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
@@ -549,7 +549,7 @@ jobs:
   opus-gate:
     name: opus-gate
     needs: [review, gitleaks, workflow-safety]
-    if: always()
+    if: (always()) && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
