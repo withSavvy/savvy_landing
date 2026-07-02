@@ -9,7 +9,7 @@ Per work-order guardrail: contrast issues are documented here, not fixed in this
 | `.nav-cta` | `#ffffff` on `#44403c` | white on heading | ~8.9:1 | Pass |
 | `.btn-primary` | `#ffffff` on `#18181b` | white on dark | ~14.6:1 | Pass |
 
-## Remaining failures (block ≥95 A11y until a design pass)
+## Findings by page (index items fixed in this pass; privacy items remain for a design pass)
 
 ### `index.html`
 
