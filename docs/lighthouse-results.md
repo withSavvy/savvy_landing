@@ -23,7 +23,8 @@ Measured locally with Lighthouse (Chromium headless) against `npx serve .` on po
 ## Screenshots
 
 Before/after pairs: `docs/lighthouse-screenshots/before/` and `docs/lighthouse-screenshots/after/`.
+Note: these are full-page renders (visual-regression evidence, identical above the fold by design), not captures of the Lighthouse report UI; the score record is the table above.
 
 ## Production domain
 
-Canonical URLs, `sitemap.xml`, and `robots.txt` use **`https://www.withsavvy.ai`** (Cloudflare Pages custom domain per deploy config).
+Canonical URLs, `sitemap.xml`, and `robots.txt` use **`https://withsavvy.ai`** (apex; verified live 2026-07-01 — `www.withsavvy.ai` has no DNS record).

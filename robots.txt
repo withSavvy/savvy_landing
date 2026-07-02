@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.withsavvy.ai/sitemap.xml
+Sitemap: https://withsavvy.ai/sitemap.xml
