@@ -9,11 +9,11 @@ Per work-order guardrail: contrast issues are documented here, not fixed in this
 | `.nav-cta` | `#ffffff` on `#44403c` | white on heading | ~8.9:1 | Pass |
 | `.btn-primary` | `#ffffff` on `#18181b` | white on dark | ~14.6:1 | Pass |
 
-## Findings by page (index items fixed in this pass; privacy items remain for a design pass)
+## Findings by page (token-only fixes — no layout change)
 
 ### `index.html`
 
-Fixed in follow-up commit (token-only, no layout change): `.agent-footnote`, `.trust-details`, `.trust-promise-link`, `.footer-text` now use `--text-secondary` / `--accent-deeper` (existing tokens).
+Fixed in follow-up commit: `.agent-footnote`, `.trust-details`, `.trust-promise-link`, `.footer-text` now use `--text-secondary` / `--accent-deeper` (existing tokens).
 
 | Selector | Before | After | Status |
 | --- | --- | --- | --- |
@@ -24,14 +24,15 @@ Fixed in follow-up commit (token-only, no layout change): `.agent-footnote`, `.t
 
 ### `privacy.html`
 
-| Selector | Colors | Ratio | Notes |
+Fixed 2026-07-08: aligned `:root` tokens with `index.html` (`--text-secondary` `#78716c`, added `--accent-deeper` `#047857`).
+
+| Selector | Before | After | Status |
 | --- | --- | --- | --- |
-| `.notice-kicker` | `#059669` on `#d1fae5` | 3.32:1 | Eyebrow on tinted band |
-| `.section-number` | `#10b981` on `#fafaf9` | 2.42:1 | Section index labels |
-| `.data-table th` | `#a8a29e` on `#fafaf9` | 2.41:1 | Table header text |
+| `.notice-kicker` | `--accent-dark` `#059669` on `#d1fae5` (3.32:1) | `--accent-deeper` `#047857` (~5.0:1) | Fixed |
+| `.hero-eyebrow` | `--accent-dark` `#059669` on `#d1fae5` (3.32:1) | `--accent-deeper` `#047857` (~5.0:1) | Fixed |
+| `.section-number` | `--accent` `#10b981` on `#fafaf9` (2.42:1) | `--accent-deeper` `#047857` (~5.0:1) | Fixed |
+| `.data-table th` | `--text-muted` `#a8a29e` on `#fafaf9` (2.41:1) | `--text-secondary` `#78716c` (~4.6:1) | Fixed |
 
-## Recommended follow-up (separate design order)
+## Domain alignment
 
-1. Darken `--text-muted` to at least `#78716c` for body-sized text, or bump font size to ≥18px where muted text is used.
-2. Use `--accent-deeper` (`#047857`) for text links on light backgrounds.
-3. Increase contrast on `.section-number` and `.notice-kicker` without changing layout.
+Canonical URLs, `sitemap.xml`, `robots.txt`, and JSON-LD use **`https://withsavvy.ai`** (apex). `www.withsavvy.ai` has no DNS — pending Cloudflare custom-domain setup (`ht-www-dns` in workspace bank).
