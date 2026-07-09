@@ -20,7 +20,7 @@ const ISSUE_LABEL = 'credential-watchdog';
 
 const CREDENTIAL_NAMES = Object.freeze([
   'AUTOMATION_ANTHROPIC_API_KEY',
-  'OPENAI_KEY',
+  process.env.OPENAI_API_KEY ? 'OPENAI_API_KEY' : 'OPENAI_KEY',
   'CLAUDE_PAT',
 ]);
 
@@ -168,6 +168,7 @@ async function probeCredential(name, env, fetchImpl = fetch) {
     case 'AUTOMATION_ANTHROPIC_API_KEY':
       verdict = await probeAnthropic(value, fetchImpl);
       break;
+    case 'OPENAI_API_KEY':
     case 'OPENAI_KEY':
       verdict = await probeOpenAi(value, fetchImpl);
       break;
