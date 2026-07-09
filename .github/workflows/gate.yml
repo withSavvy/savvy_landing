@@ -238,7 +238,7 @@ jobs:
     name: review
     needs: [gitleaks, workflow-safety]
     if: (always()) && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
     outputs:
       fixed_summary: ${{ steps.emit_context.outputs.fixed_summary }}
@@ -550,7 +550,7 @@ jobs:
     name: opus-gate
     needs: [review, gitleaks, workflow-safety]
     if: (always()) && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
 
     steps:
