@@ -250,13 +250,6 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.CLAUDE_PAT }}
 
-      - name: Install Claude CLI when absent (hosted runner)
-        run: |
-          if ! command -v claude >/dev/null 2>&1; then
-            npm install -g @anthropic-ai/claude-code
-            claude --version
-          fi
-
       # ── HARD-BLOCK FLOOR ─────────────────────────────────────────────────
       # Absolute: secrets / CI-surface edits are NEVER auto-fixed by any model.
       # Exit 1 before any model call.
@@ -565,13 +558,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.CLAUDE_PAT }}
-
-      - name: Install Claude CLI when absent (hosted runner)
-        run: |
-          if ! command -v claude >/dev/null 2>&1; then
-            npm install -g @anthropic-ai/claude-code
-            claude --version
-          fi
 
       # ── HARD-BLOCK FLOOR ─────────────────────────────────────────────────
       # Absolute: same floor as Tier 1. Opus CANNOT override this.
