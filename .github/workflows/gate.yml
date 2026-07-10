@@ -331,7 +331,7 @@ jobs:
         continue-on-error: true
         with:
           github_token: ${{ secrets.CLAUDE_PAT }}
-          anthropic_api_key: ${{ secrets.AUTOMATION_ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
           claude_args: "--model claude-sonnet-4-6 --max-turns 40"
           prompt: |
             You are the Sonnet fixer (Tier 1) in the savvy_landing consolidated repair-chain gate.
@@ -410,7 +410,7 @@ jobs:
         continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          anthropic_api_key: ${{ secrets.AUTOMATION_ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
           claude_args: "--model claude-sonnet-4-6 --max-turns 30"
           prompt: |
             You are the Sonnet reviewer (Tier 1) in the savvy_landing gate — REVIEW-ONLY pass.
@@ -453,8 +453,8 @@ jobs:
                            --repo "$GITHUB_REPOSITORY" || true
                          echo "::error::review: needs human review (workflow-edit or incomplete review)." ; exit 1 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
-                           --detail "reviewer AUTH FAILED (401) — org secret AUTOMATION_ANTHROPIC_API_KEY invalid/expired/revoked" || true
-                         echo "::error::review: AUTH FAILED — org secret AUTOMATION_ANTHROPIC_API_KEY invalid/expired (NOT CLAUDE_CODE_OAUTH_TOKEN). Rotate the dedicated metered automation key." ; exit 1 ;;
+                           --detail "reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
+                         echo "::error::review: AUTH FAILED — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 1 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer could not run (no result / crash; token=$TOKEN)" || true
                          echo "::error::review: did not run or errored ($TOKEN)." ; exit 1 ;;
@@ -704,7 +704,7 @@ jobs:
         continue-on-error: true
         with:
           github_token: ${{ secrets.CLAUDE_PAT }}
-          anthropic_api_key: ${{ secrets.AUTOMATION_ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
           claude_args: "--model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 40"
           prompt: |
             You are the Opus final decider (Tier 2) in the savvy_landing repair-chain gate.
@@ -803,7 +803,7 @@ jobs:
         continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          anthropic_api_key: ${{ secrets.AUTOMATION_ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
           claude_args: "--model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 20"
           prompt: |
             You are the Opus final decider (Tier 2) in the savvy_landing gate — REVIEW-ONLY pass.
@@ -848,8 +848,8 @@ jobs:
                            --repo "$GITHUB_REPOSITORY" || true
                          echo "::error::opus-gate: needs human review (workflow-edit or incomplete review)." ; exit 1 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
-                           --detail "Opus reviewer AUTH FAILED (401) — org secret AUTOMATION_ANTHROPIC_API_KEY invalid/expired/revoked" || true
-                         echo "::error::opus-gate AUTH FAILED — org secret AUTOMATION_ANTHROPIC_API_KEY invalid/expired (NOT CLAUDE_CODE_OAUTH_TOKEN). Rotate the dedicated metered automation key." ; exit 1 ;;
+                           --detail "Opus reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
+                         echo "::error::opus-gate AUTH FAILED — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 1 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer could not run (no result / crash; token=$TOKEN)" || true
                          echo "::error::opus-gate: did not run or errored ($TOKEN)." ; exit 1 ;;
