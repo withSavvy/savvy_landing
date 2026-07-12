@@ -13,3 +13,4 @@ backend/
 
 # Worktree-isolation scratch (new-session.sh) — never stage a checked-out worktree
 .worktrees/
+.claude/settings.local.json
