@@ -13,3 +13,6 @@ backend/
 
 # Worktree-isolation scratch (new-session.sh) — never stage a checked-out worktree
 .worktrees/
+
+# Claude Code local settings (never commit — contains personal permission grants)
+.claude/settings.local.json

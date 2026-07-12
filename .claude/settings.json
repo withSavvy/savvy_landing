@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Write",
+      "NotebookEdit",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "mcp__Supabase",
+      "mcp__github",
+      "mcp__Claude_Code_Remote"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}
