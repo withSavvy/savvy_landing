@@ -43,6 +43,18 @@ permissions:
   pull-requests: write
   issues: write
 
+# PREVENT-layer canary [wo:reviewer-selfheal-prevent-canary]: read-only+write
+# allowlist for the Claude reviewer/fixer steps (Sonnet fix pass, Sonnet
+# review-only pass, Opus final decider + fixer, Opus review-only pass).
+# Ported verbatim (repo-scoped) from the proven savvy-backend fix. savvy_landing
+# is a static site with no root package.json, so all npm/pnpm grants are
+# omitted. Defined once here so every claude-code-action step below stays in
+# sync. This does NOT touch the fixer steps' existing Edit/Write/commit/push
+# capability — that comes from claude-code-action's mode + core tools,
+# independent of --allowedTools.
+env:
+  GATE_REVIEWER_ALLOWED_TOOLS: "Edit,Write,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git branch:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh api:*),Bash(cat:*),Bash(ls:*),Bash(find:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(rg:*)"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 0  —  deterministic floor (parallel, no model)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -332,7 +344,9 @@ jobs:
         with:
           github_token: ${{ secrets.CLAUDE_PAT }}
           claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
-          claude_args: "--model claude-sonnet-4-6 --max-turns 40"
+          claude_args: |
+            --model claude-sonnet-4-6 --max-turns 40
+            --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
           prompt: |
             You are the Sonnet fixer (Tier 1) in the savvy_landing consolidated repair-chain gate.
 
@@ -411,7 +425,9 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
-          claude_args: "--model claude-sonnet-4-6 --max-turns 30"
+          claude_args: |
+            --model claude-sonnet-4-6 --max-turns 30
+            --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
           prompt: |
             You are the Sonnet reviewer (Tier 1) in the savvy_landing gate — REVIEW-ONLY pass.
             Your one-shot fix pass has already been used on this PR (label gate:fixed-sonnet is set).
@@ -705,7 +721,9 @@ jobs:
         with:
           github_token: ${{ secrets.CLAUDE_PAT }}
           claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
-          claude_args: "--model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 40"
+          claude_args: |
+            --model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 40
+            --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
           prompt: |
             You are the Opus final decider (Tier 2) in the savvy_landing repair-chain gate.
             You receive all upstream signals and make the BINDING terminal decision.
@@ -804,7 +822,9 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
-          claude_args: "--model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 20"
+          claude_args: |
+            --model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 20
+            --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
           prompt: |
             You are the Opus final decider (Tier 2) in the savvy_landing gate — REVIEW-ONLY pass.
             Your one-shot fix pass has already been used on this PR (label gate:fixed-opus is set).
