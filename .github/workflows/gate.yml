@@ -53,7 +53,7 @@ permissions:
 # capability — that comes from claude-code-action's mode + core tools,
 # independent of --allowedTools.
 env:
-  GATE_REVIEWER_ALLOWED_TOOLS: "Edit,Write,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git branch:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh api:*),Bash(cat:*),Bash(ls:*),Bash(find:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(rg:*)"
+  GATE_REVIEWER_ALLOWED_TOOLS: "Read,Grep,Glob,Edit,Write,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git branch:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh api:*),Bash(cat:*),Bash(ls:*),Bash(find:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(rg:*)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 0  —  deterministic floor (parallel, no model)
