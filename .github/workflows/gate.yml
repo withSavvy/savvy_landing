@@ -463,17 +463,23 @@ jobs:
             "${REVIEW_EXEC_FILE}" \
             "$EDITS_WF")
           echo "gate_check_ran -> $TOKEN (edits_ci=$EDITS_WF)"
+          # ROUTE_HUMAN/AUTH_FAIL/* are a "couldn't verify" outcome, NOT a code
+          # rejection — they exit 0 so this check doesn't sit PERMANENTLY RED (the
+          # reviewer will never retroactively "run" on a stale PR). Safety instead
+          # comes from the needs-human-review label, which merge-guard.yml (a
+          # separate REQUIRED check) and auto-arm-merge.yml both hard-block on.
+          # [wo:gate-reviewer-infra-nonblocking-landing]
           case "$TOKEN" in
             PASS)        echo "Sonnet review ran and succeeded." ; exit 0 ;;
             ROUTE_HUMAN) gh issue edit "$PR_NUMBER" --add-label needs-human-review \
                            --repo "$GITHUB_REPOSITORY" || true
-                         echo "::error::review: needs human review (workflow-edit or incomplete review)." ; exit 1 ;;
+                         echo "::warning::review: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
-                         echo "::error::review: AUTH FAILED — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 1 ;;
+                         echo "::warning::review: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging, not a permanent block. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer could not run (no result / crash; token=$TOKEN)" || true
-                         echo "::error::review: did not run or errored ($TOKEN)." ; exit 1 ;;
+                         echo "::warning::review: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
           esac
 
       # ── EMIT CONTEXT FOR DOWNSTREAM ──────────────────────────────────────
@@ -847,6 +853,7 @@ jobs:
       # AUTH_FAIL and crash paths route through gate_infra_escalate.sh (Type C):
       # distinct gate-infra-error label + deduped tracking issue + "couldn't verify" comment.
       - name: Enforce Opus review actually ran
+        id: enforce_opus_ran
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && always()
         env:
           GH_TOKEN: ${{ secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
@@ -862,22 +869,42 @@ jobs:
             "${OPUS_EXEC_FILE}" \
             "$EDITS_WF")
           echo "gate_check_ran -> $TOKEN (edits_ci=$EDITS_WF)"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+          # ROUTE_HUMAN/AUTH_FAIL/* are a "couldn't verify" outcome, NOT a code
+          # rejection — they exit 0 so this check doesn't sit PERMANENTLY RED (the
+          # reviewer will never retroactively "run" on a stale PR). Safety instead
+          # comes from the needs-human-review label, which merge-guard.yml (a
+          # separate REQUIRED check) and auto-arm-merge.yml both hard-block on.
+          # `token` output above gates BOTH "Enforce Opus verdict" (below) and
+          # "Clear stale labels on clean pass" to PASS-only, so a couldn't-run
+          # outcome can never (a) fall through to the verdict step's own
+          # fail-closed exit 1, or (b) have its needs-human-review label
+          # stripped by the clean-pass label-clear step in this same run.
+          # [wo:gate-reviewer-infra-nonblocking-landing]
           case "$TOKEN" in
             PASS)        echo "Opus review ran and succeeded." ; exit 0 ;;
             ROUTE_HUMAN) gh issue edit "$PR_NUMBER" --add-label needs-human-review \
                            --repo "$GITHUB_REPOSITORY" || true
-                         echo "::error::opus-gate: needs human review (workflow-edit or incomplete review)." ; exit 1 ;;
+                         echo "::warning::opus-gate: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
-                         echo "::error::opus-gate AUTH FAILED — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 1 ;;
+                         echo "::warning::opus-gate: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging, not a permanent block. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer could not run (no result / crash; token=$TOKEN)" || true
-                         echo "::error::opus-gate: did not run or errored ($TOKEN)." ; exit 1 ;;
+                         echo "::warning::opus-gate: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
           esac
 
       # ── VERDICT ENFORCEMENT ──────────────────────────────────────────────
+      # Gated on steps.enforce_opus_ran.outputs.token == 'PASS' (not just success()):
+      # the "Enforce Opus review actually ran" step above now exits 0 on
+      # ROUTE_HUMAN/AUTH_FAIL/* too (couldn't-run, not a rejection), so success()
+      # alone is no longer enough to mean "the reviewer produced a trustworthy
+      # result". Without this extra gate, a couldn't-run PR would fall through to
+      # gate_verdict.py, get VERDICT=NONE (no exec file / no token), and hit its
+      # own `*` -> exit 1 — silently recreating the exact permanent-red bug this
+      # fix removes, via a different step. [wo:gate-reviewer-infra-nonblocking-landing]
       - name: Enforce Opus verdict (binding terminal gate)
-        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && success()
+        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.enforce_opus_ran.outputs.token == 'PASS' && success()
         env:
           GH_TOKEN: ${{ secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
         run: |
@@ -902,12 +929,25 @@ jobs:
       # success() here is true only when floor_check didn't hard-block AND
       # either the docs-only/trivial skip path ran or "Enforce Opus verdict"
       # above exited 0 (VERDICT=PASS) — the same branch that makes this job's
-      # required-check conclusion green. Every real block exits non-zero on a
-      # step WITHOUT continue-on-error, flipping success() to false for every
-      # step after it, so a real block is never cleared. do-not-merge /
-      # reviewing are human-controlled holds and are intentionally untouched.
+      # required-check conclusion green. FLOOR hard-blocks and genuine FAIL/
+      # no-verdict rejections still exit non-zero WITHOUT continue-on-error,
+      # flipping success() to false, so a real block is never cleared.
+      # do-not-merge / reviewing are human-controlled holds and are
+      # intentionally left untouched.
+      #
+      # Extra explicit gate (steps.risk_tier.outputs.tier != 'high' OR
+      # steps.enforce_opus_ran.outputs.token == 'PASS'): since "Enforce Opus
+      # review actually ran" now exits 0 on ROUTE_HUMAN/AUTH_FAIL/*
+      # (couldn't-run, not a rejection — see that step's comment) and
+      # "Enforce Opus verdict" is skipped (not failed) for those same tokens,
+      # success() alone would stay true and this step would immediately strip
+      # the needs-human-review / gate-infra-error labels THAT SAME RUN just
+      # added — silently defeating the human-review routing. Only clear
+      # labels when Opus was never needed (tier != high, the pre-existing
+      # skip path) or when it ran and genuinely came back PASS.
+      # [wo:gate-reviewer-infra-nonblocking-landing]
       - name: Clear stale needs-human-review / gate-infra-error labels on clean pass
-        if: success()
+        if: success() && (steps.risk_tier.outputs.tier != 'high' || steps.enforce_opus_ran.outputs.token == 'PASS')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
