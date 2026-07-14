@@ -18,8 +18,11 @@ const HAIKU_MODEL = 'claude-3-5-haiku-20241022';
 const ISSUE_MARKER = '<!-- gate-credential-watchdog -->';
 const ISSUE_LABEL = 'credential-watchdog';
 
+// AUTOMATION_ANTHROPIC_API_KEY was retired 2026-07-14: the gate reviewers run on
+// the company Claude subscription OAuth token (REVIEWER_SUB_OAUTH_TOKEN), so no
+// workflow consumes that API key anymore. Probing it would permanently alert on a
+// key that is dead on purpose.
 const CREDENTIAL_NAMES = Object.freeze([
-  'AUTOMATION_ANTHROPIC_API_KEY',
   process.env.OPENAI_API_KEY ? 'OPENAI_API_KEY' : 'OPENAI_KEY',
   'CLAUDE_PAT',
 ]);
@@ -165,6 +168,7 @@ async function probeCredential(name, env, fetchImpl = fetch) {
 
   let verdict;
   switch (name) {
+    case 'ANTHROPIC_API_KEY':
     case 'AUTOMATION_ANTHROPIC_API_KEY':
       verdict = await probeAnthropic(value, fetchImpl);
       break;
