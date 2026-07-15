@@ -257,10 +257,22 @@ jobs:
       residual: ${{ steps.emit_context.outputs.residual }}
 
     steps:
+      # Prefer the savvy-gate-bot App installation token over Sara's personal
+      # CLAUDE_PAT (one shared 5k-req/hr user bucket). Phase D
+      # (gate-bot-app-auth-migration.md): CLAUDE_PAT is retired org-wide, so it's
+      # only a dead fallback here. continue-on-error → falls back if the mint fails.
+      - name: Generate gate App token (rate-limit isolation; falls back to CLAUDE_PAT)
+        id: app_token
+        continue-on-error: true
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GATE_APP_ID }}
+          private-key: ${{ secrets.GATE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.CLAUDE_PAT }}
+          token: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT }}
 
       # ── HARD-BLOCK FLOOR ─────────────────────────────────────────────────
       # Absolute: secrets / CI-surface edits are NEVER auto-fixed by any model.
@@ -270,7 +282,7 @@ jobs:
       - name: Hard-block floor check
         id: floor_check
         env:
-          GH_TOKEN: ${{ secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
           PR_NUMBER="${{ github.event.pull_request.number }}"
@@ -342,7 +354,7 @@ jobs:
         if: steps.floor_check.conclusion == 'success' && steps.loop_guard.outputs.review_only == 'false'
         continue-on-error: true
         with:
-          github_token: ${{ secrets.CLAUDE_PAT }}
+          github_token: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT }}
           claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
           claude_args: |
             --model claude-sonnet-4-6 --max-turns 40
@@ -444,7 +456,7 @@ jobs:
       - name: Enforce review actually ran
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
           REVIEW_EXEC_FILE: ${{ steps.claude_review.outputs.execution_file || steps.claude_review_only.outputs.execution_file }}
         run: |
           set -uo pipefail
@@ -576,10 +588,21 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      # Prefer the savvy-gate-bot App installation token over Sara's personal
+      # CLAUDE_PAT (Phase D, gate-bot-app-auth-migration.md — CLAUDE_PAT retired
+      # org-wide, now a dead fallback). continue-on-error → falls back on mint fail.
+      - name: Generate gate App token (rate-limit isolation; falls back to CLAUDE_PAT)
+        id: app_token
+        continue-on-error: true
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GATE_APP_ID }}
+          private-key: ${{ secrets.GATE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.CLAUDE_PAT }}
+          token: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT }}
 
       # ── HARD-BLOCK FLOOR ─────────────────────────────────────────────────
       # Absolute: same floor as Tier 1. Opus CANNOT override this.
@@ -587,7 +610,7 @@ jobs:
       - name: Hard-block floor check
         id: floor_check
         env:
-          GH_TOKEN: ${{ secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
           PR_NUMBER="${{ github.event.pull_request.number }}"
@@ -694,7 +717,7 @@ jobs:
       - name: Auto-pass docs-only diff
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'docs'
         env:
-          GH_TOKEN: ${{ secrets.CLAUDE_PAT }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
           gh pr comment "$PR_NUMBER" \
@@ -725,7 +748,7 @@ jobs:
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.loop_guard.outputs.review_only == 'false'
         continue-on-error: true
         with:
-          github_token: ${{ secrets.CLAUDE_PAT }}
+          github_token: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT }}
           claude_code_oauth_token: ${{ secrets.REVIEWER_SUB_OAUTH_TOKEN }}
           claude_args: |
             --model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 40
@@ -856,7 +879,7 @@ jobs:
         id: enforce_opus_ran
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && always()
         env:
-          GH_TOKEN: ${{ secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
           OPUS_EXEC_FILE: ${{ steps.opus_review.outputs.execution_file || steps.opus_review_only.outputs.execution_file }}
         run: |
           set -uo pipefail
@@ -906,7 +929,7 @@ jobs:
       - name: Enforce Opus verdict (binding terminal gate)
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.enforce_opus_ran.outputs.token == 'PASS' && success()
         env:
-          GH_TOKEN: ${{ secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
           PR_NUMBER="${{ github.event.pull_request.number }}"
