@@ -19,7 +19,10 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # Route to the self-hosted savvy-vm runner via the CI_RUNNER repo variable
+    # to avoid GitHub-hosted runner minutes; falls back to ubuntu-latest when
+    # the variable is unset.
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 15
     environment: production
     steps:
