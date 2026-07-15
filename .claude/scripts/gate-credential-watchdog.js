@@ -3,9 +3,10 @@
  * gate-credential-watchdog.js — probe gate CI credentials before PRs pile up.
  *
  * [wo:gate-secret-watchdog]: validates AUTOMATION_ANTHROPIC_API_KEY, OPENAI_KEY,
- * and CLAUDE_PAT with auth-centric HTTP probes. Reports credential names +
- * verdicts only — never values. Exit 1 when any credential is INVALID or
- * MISCONFIGURED; exit 0 when all are VALID and/or UNREACHABLE only.
+ * and the savvy-gate-bot App installation token (GATE_APP_TOKEN) with auth-centric
+ * HTTP probes. Reports credential names + verdicts only — never values. Exit 1 when
+ * any credential is INVALID or MISCONFIGURED; exit 0 when all are VALID and/or
+ * UNREACHABLE only. (Phase D: replaced the retired personal CLAUDE_PAT probe.)
  *
  * Usage:
  *   node .claude/scripts/gate-credential-watchdog.js [--json]
@@ -24,7 +25,7 @@ const ISSUE_LABEL = 'credential-watchdog';
 // key that is dead on purpose.
 const CREDENTIAL_NAMES = Object.freeze([
   process.env.OPENAI_API_KEY ? 'OPENAI_API_KEY' : 'OPENAI_KEY',
-  'CLAUDE_PAT',
+  'GATE_APP_TOKEN',
 ]);
 
 function classifyAnthropicStatus(status) {
@@ -143,9 +144,13 @@ async function probeOpenAi(apiKey, fetchImpl = fetch) {
   }
 }
 
-async function probeGithubPat(token, fetchImpl = fetch) {
+// The savvy-gate-bot App INSTALLATION token has no user identity, so it 403s on
+// /user (the endpoint the retired CLAUDE_PAT probe used — that would false-INVALID
+// a healthy App token). Probe an endpoint an installation token CAN call —
+// /installation/repositories — so a healthy App reads VALID.
+async function probeGithubAppToken(token, fetchImpl = fetch) {
   try {
-    const response = await fetchImpl('https://api.github.com/user', {
+    const response = await fetchImpl('https://api.github.com/installation/repositories?per_page=1', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -176,8 +181,8 @@ async function probeCredential(name, env, fetchImpl = fetch) {
     case 'OPENAI_KEY':
       verdict = await probeOpenAi(value, fetchImpl);
       break;
-    case 'CLAUDE_PAT':
-      verdict = await probeGithubPat(value, fetchImpl);
+    case 'GATE_APP_TOKEN':
+      verdict = await probeGithubAppToken(value, fetchImpl);
       break;
     default:
       verdict = 'MISCONFIGURED';
@@ -245,7 +250,7 @@ module.exports = {
   assertNoSecretLeak,
   probeAnthropic,
   probeOpenAi,
-  probeGithubPat,
+  probeGithubAppToken,
   probeCredential,
   runWatchdog,
   formatReport,
