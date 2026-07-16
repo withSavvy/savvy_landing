@@ -36,6 +36,7 @@ jobs:
                [[ "$file" =~ credit-fabrication-guard ]] || \
                [[ "$file" =~ card\[-_\]benefits ]] || \
                [[ "$file" =~ ^\.github/workflows/ ]] || \
+               [[ "$file" =~ ^\.github/scripts/ ]] || \
                [[ "$file" =~ ^\.github/CODEOWNERS$ ]] || \
                [[ "$file" =~ ^\.github/dependabot\.yml$ ]] || \
                [[ "$file" =~ deploy ]]; then
