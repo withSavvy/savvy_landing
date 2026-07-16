@@ -405,6 +405,42 @@ jobs:
                broken build or deploy config
             3. Architecture: inconsistent patterns, unnecessary complexity in build/deploy
 
+            QUALITY KITS (mandatory — full definitions in .claude/review-kits.md):
+            Evaluate this diff against every kit below whose file types appear in the
+            changed files, and label each finding with its kit tag (e.g. "[security]
+            ...") inside your SONNET_SUMMARY / SONNET_RESIDUAL output below — do not
+            add new output sections or change that grammar. This repo is the marketing
+            site (static HTML + Cloudflare Workers static-assets config, no build step,
+            no bundler, nested backend/ is gitignored and not part of this repo): [code]
+            and [security] ALWAYS apply; [typescript] applies to any .js file (e.g.
+            .claude/scripts/**); [react] and [database] have no matching files in this
+            repo today (no .tsx/.jsx components, no migrations/.sql) — skip them when
+            nothing of that file type appears in the diff, but keep evaluating the
+            others. One reviewer pass evaluates all applicable kits; do not re-review
+            the diff once per kit.
+              1. [code] (ALWAYS): logic/correctness bugs; comprehensive error handling
+                 (no swallowed errors, no silent catch, no bad fallbacks); immutability
+                 (no in-place mutation); function under 50 lines / file under 800; no
+                 nesting deeper than 4; named constants not magic numbers; naming;
+                 structured logger not console.log in src; no hardcoded secrets.
+              2. [security] (ALWAYS): OWASP Top 10 — injection/parameterized queries,
+                 secrets in code, auth/authz bypass, input validation at boundaries,
+                 SSRF, path traversal, unsafe crypto, missing rate limiting,
+                 sensitive-data leaks in errors; auth/billing gate exemptions must be
+                 EXACT-PATH not broad-prefix; billing/auth failure must default DENY.
+              3. [typescript] (.js — no .ts/.tsx in this repo today): no any (use
+                 unknown then narrow); explicit types on exported/public APIs; async
+                 correctness (no floating promises); Zod validation at boundaries;
+                 immutable update patterns.
+              4. [react] (.tsx/.jsx — not expected in this repo): hook dependency
+                 correctness; render performance; server/client boundaries;
+                 accessibility; React XSS; typed props.
+              5. [database] (migrations/.sql/DB code — not expected in this repo): N+1
+                 avoidance; pagination/LIMIT on unbounded queries; parameterized
+                 queries; indexes on filtered columns; NEW tables ENABLE+FORCE RLS +
+                 service-role policy IN THE SAME migration; monetary values integer
+                 cents never float; soft-retire never hard-delete.
+
             ACTIONS:
             - Fix safe issues: edit files, commit with "fix(review): <description> [auto-fix]", push
             - Approve if clean (no issues, or all fixed)
@@ -415,9 +451,9 @@ jobs:
             Do NOT post your own PR comment — the workflow records your reasoning automatically.
 
             After completing your work, output on the VERY LAST line:
-              SONNET_SUMMARY: <one-line summary of what you fixed and what remains>
+              SONNET_SUMMARY: <one-line summary of what you fixed and what remains, labeling quality-kit items by kit tag, e.g. "[security] fixed X; [typescript] flagged Y">
             Then on the line after:
-              SONNET_RESIDUAL: <comma-separated list of remaining unresolved issues, or NONE>
+              SONNET_RESIDUAL: <comma-separated list of remaining unresolved issues, each prefixed with its kit tag e.g. "[security] ...", or NONE>
 
       # ── ADD LABEL after Sonnet fix pass ─────────────────────────────────
       - name: Mark Sonnet fix used (label gate:fixed-sonnet)
@@ -444,11 +480,46 @@ jobs:
             You are the Sonnet reviewer (Tier 1) in the savvy_landing gate — REVIEW-ONLY pass.
             Your one-shot fix pass has already been used on this PR (label gate:fixed-sonnet is set).
             Do NOT push any commits. Review the PR and report findings only.
+
+            QUALITY KITS (mandatory — full definitions in .claude/review-kits.md):
+            Evaluate this diff against every kit below whose file types appear in the
+            changed files, and label each finding with its kit tag (e.g. "[security]
+            ...") inside your SONNET_RESIDUAL output below — do not add new output
+            sections or change that grammar. This repo is the marketing site (static
+            HTML + Cloudflare Workers static-assets config, no build step, no bundler,
+            nested backend/ is gitignored and not part of this repo): [code] and
+            [security] ALWAYS apply; [typescript] applies to any .js file (e.g.
+            .claude/scripts/**); [react] and [database] have no matching files in this
+            repo today — skip them when nothing of that file type appears in the diff.
+            One reviewer pass evaluates all applicable kits.
+              1. [code] (ALWAYS): logic/correctness bugs; comprehensive error handling
+                 (no swallowed errors, no silent catch, no bad fallbacks); immutability
+                 (no in-place mutation); function under 50 lines / file under 800; no
+                 nesting deeper than 4; named constants not magic numbers; naming;
+                 structured logger not console.log in src; no hardcoded secrets.
+              2. [security] (ALWAYS): OWASP Top 10 — injection/parameterized queries,
+                 secrets in code, auth/authz bypass, input validation at boundaries,
+                 SSRF, path traversal, unsafe crypto, missing rate limiting,
+                 sensitive-data leaks in errors; auth/billing gate exemptions must be
+                 EXACT-PATH not broad-prefix; billing/auth failure must default DENY.
+              3. [typescript] (.js — no .ts/.tsx in this repo today): no any (use
+                 unknown then narrow); explicit types on exported/public APIs; async
+                 correctness (no floating promises); Zod validation at boundaries;
+                 immutable update patterns.
+              4. [react] (.tsx/.jsx — not expected in this repo): hook dependency
+                 correctness; render performance; server/client boundaries;
+                 accessibility; React XSS; typed props.
+              5. [database] (migrations/.sql/DB code — not expected in this repo): N+1
+                 avoidance; pagination/LIMIT on unbounded queries; parameterized
+                 queries; indexes on filtered columns; NEW tables ENABLE+FORCE RLS +
+                 service-role policy IN THE SAME migration; monetary values integer
+                 cents never float; soft-retire never hard-delete.
+
             Do NOT post your own PR comment — the workflow records your reasoning automatically.
             Output on the VERY LAST line:
               SONNET_SUMMARY: <one-line summary>
             Then:
-              SONNET_RESIDUAL: <remaining issues or NONE>
+              SONNET_RESIDUAL: <remaining issues, each prefixed with its kit tag e.g. "[security] ...", or NONE>
 
       # ── FAIL-CLOSED ENFORCEMENT ──────────────────────────────────────────
       # AUTH_FAIL and crash paths route through gate_infra_escalate.sh (Type C):
