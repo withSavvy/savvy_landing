@@ -36,6 +36,8 @@ jobs:
                [[ "$file" =~ credit-fabrication-guard ]] || \
                [[ "$file" =~ card\[-_\]benefits ]] || \
                [[ "$file" =~ ^\.github/workflows/ ]] || \
+               [[ "$file" =~ ^\.github/CODEOWNERS$ ]] || \
+               [[ "$file" =~ ^\.github/dependabot\.yml$ ]] || \
                [[ "$file" =~ deploy ]]; then
               BRICK_RISK=true
               echo "Brick risk path detected: $file"
