@@ -1011,13 +1011,12 @@ jobs:
           VERDICT=$(python3 .github/scripts/gate_verdict.py "$EXEC_FILE")
           echo "opus verdict -> $VERDICT"
 
-          case "$VERDICT" in
-            PASS) echo "Opus APPROVED — gate green." ; exit 0 ;;
-            FAIL) echo "::error::opus-gate: Opus REQUESTED CHANGES — blocking." ; exit 1 ;;
-            *)    gh pr edit "$PR_NUMBER" --add-label needs-human-review \
-                    --repo "$GITHUB_REPOSITORY" || true
-                  echo "::error::opus-gate: no verdict emitted — fail-closed." ; exit 1 ;;
-          esac
+          # Routing extracted to gate_opus_verdict_route.sh so the workflow and
+          # the committed test (.github/scripts/__tests__/gate_opus_verdict_route.test.sh)
+          # exercise the exact same code — [wo:fix-gate-opus-gate-fail-arm-must-add-needs-human-review-reject-verdicts-silently]
+          # (FAIL previously exited 1 with no needs-human-review label, so a real
+          # Opus REQUEST_CHANGES was silently mergeable since opus-gate isn't required).
+          bash .github/scripts/gate_opus_verdict_route.sh "$VERDICT" "$PR_NUMBER" "$GITHUB_REPOSITORY"
 
       # ── CLEAR STALE LABELS on a genuinely clean terminal pass ────────────
       # success() here is true only when floor_check didn't hard-block AND
