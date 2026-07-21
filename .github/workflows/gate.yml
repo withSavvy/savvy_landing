@@ -264,7 +264,7 @@ jobs:
       - name: Generate gate App token (rate-limit isolation; falls back to CLAUDE_PAT)
         id: app_token
         continue-on-error: true
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.GATE_APP_ID }}
           private-key: ${{ secrets.GATE_APP_PRIVATE_KEY }}
@@ -665,7 +665,7 @@ jobs:
       - name: Generate gate App token (rate-limit isolation; falls back to CLAUDE_PAT)
         id: app_token
         continue-on-error: true
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.GATE_APP_ID }}
           private-key: ${{ secrets.GATE_APP_PRIVATE_KEY }}
