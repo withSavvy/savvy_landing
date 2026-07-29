@@ -1,0 +1,43 @@
+# Cloudflare Workers assets exclusion list.
+#
+# wrangler.jsonc sets assets.directory to "." (the repo root), so WITHOUT this
+# file every file in the repository is published to withsavvy.ai. That leaked
+# dashboard.html (a working admin console, including the private admin API map)
+# and docs/signup-architecture-proposal.md (trial-abuse and coupon-abuse detail)
+# to the public internet with no authentication.
+#
+# Syntax follows .gitignore. Anything listed here is NOT uploaded.
+#
+# ADDING A NEW FILE AT THE REPO ROOT? It is published by default. If it is not
+# part of the public marketing site, add it here in the same change.
+#
+# Deliberately still published: index.html, index-1.html, index-2.html,
+# index3.html, privacy.html, Assets/, robots.txt, sitemap.xml, .nojekyll.
+# (The stale index-* variants are handled separately by the banked noindex
+# order — they are intentionally left published here.)
+
+# --- The leak this file exists to close ---
+dashboard.html
+docs/
+
+# --- Repo/tooling metadata, never part of the site ---
+.assetsignore
+.claude/
+.github/
+.gitignore
+.pr_agent.toml
+AGENTS.md
+ANALYTICS.md
+README.md
+pr_compliance_checklist.yaml
+wrangler.jsonc
+
+# --- Build/runtime artifacts that must never ship ---
+node_modules/
+.wrangler/
+.dev.vars*
+.env
+*.log
+.worktrees/
+backend/
+data/
