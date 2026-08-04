@@ -349,7 +349,7 @@ jobs:
           echo "loop_guard: review_only=$REVIEW_ONLY (label check)"
 
       # ── SONNET FIX PASS (runs only when review_only=false) ──────────────
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1.0.183
         id: claude_review
         if: steps.floor_check.conclusion == 'success' && steps.loop_guard.outputs.review_only == 'false'
         continue-on-error: true
@@ -466,7 +466,7 @@ jobs:
             --add-label gate:fixed-sonnet || true
 
       # ── SONNET REVIEW-ONLY PASS (when one-shot already used) ────────────
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1.0.183
         id: claude_review_only
         if: steps.floor_check.conclusion == 'success' && steps.loop_guard.outputs.review_only == 'true'
         continue-on-error: true
@@ -814,7 +814,7 @@ jobs:
           echo "loop_guard: review_only=$REVIEW_ONLY (label check)"
 
       # ── OPUS FULL REVIEW (FINAL DECIDER + FIXER #2) ──────────────────────
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1.0.183
         id: opus_review
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.loop_guard.outputs.review_only == 'false'
         continue-on-error: true
@@ -915,7 +915,7 @@ jobs:
             --add-label gate:fixed-opus || true
 
       # ── OPUS REVIEW-ONLY PASS (when one-shot already used) ──────────────
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1.0.183
         id: opus_review_only
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.loop_guard.outputs.review_only == 'true'
         continue-on-error: true
