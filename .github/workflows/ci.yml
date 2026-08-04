@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Verify .assetsignore allowlist
+        run: bash .github/scripts/verify-assetsignore.sh
+
       - name: Validate HTML files
         run: |
           pip install html5validator
