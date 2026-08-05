@@ -1,7 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /index-1.html
-Disallow: /index-2.html
-Disallow: /index3.html
 
 Sitemap: https://withsavvy.ai/sitemap.xml
