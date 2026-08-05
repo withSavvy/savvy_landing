@@ -29,3 +29,31 @@ check fails, report exactly "dispatched but not yet confirmed on main" —
 never invent a slug or commit SHA. Full procedure (incl. the GitHub-MCP
 variant for sessions without `gh`):
 `.claude/docs/work-order-submission.md` in savvy-workspace.
+
+## No loose items — every item raised gets a disposition
+
+Standing rule (Sara, 2026-08-05): a session never carries a loose item.
+
+- **Open a ledger at session start** — every discrete ask in the task/order
+  brief, plus anything the previous session's TL;DR left open.
+- **Log every new item the moment it appears** — including asides, things you
+  discover mid-task, review comments, CI failures, and suggestions *you* raise.
+  Your own "we should probably also…" is the item most likely to vanish.
+- **Drain the ledger before the session ends.** Each item finishes at exactly
+  one of three dispositions:
+  1. **Addressed** — done *and verified*; the proof is the pushed diff or a CI
+     check green on the pushed commit. A green local run is evidence, not
+     proof, and "I made the edit" is neither.
+  2. **Captured** — written into a durable location someone can pick up cold: a
+     work order filed via the self-serve intake described in this file, or a
+     self-contained prompt in the PR body or handoff note. Never the session
+     transcript alone — that dies with the container.
+  3. **Answered** — consciously declined, deferred, or resolved as a non-issue,
+     with one sentence of why.
+
+There is no fourth bucket, and "mentioned it once" is not a disposition. Since
+Captured and Answered are always available, running out of session is never a
+reason to leave an item loose. The session-end TL;DR (Done / To do / Next) is
+written **from the drained ledger**, not from memory.
+
+Full spec: `.claude/docs/no-loose-items.md` in `withSavvy/savvy-workspace`.
