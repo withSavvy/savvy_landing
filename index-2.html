@@ -5,35 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Savvy — You Have the Cards. You're Just Not Using Them.</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2310b981'%20stroke-width='2.5'%3E%3Cpath%20d='M12%202L2%207l10%205%2010-5-10-5zM2%2017l10%205%2010-5M2%2012l10%205%2010-5'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="/Assets/brand/savvy-mark.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/Assets/brand/favicon-32.png">
+    <link rel="apple-touch-icon" href="/Assets/brand/apple-touch-icon.png">
+    <meta name="theme-color" content="#12291F">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-primary: #fafaf9;
             --bg-white: #ffffff;
             --bg-subtle: #f5f5f4;
-            --bg-dark: #18181b;
-            --bg-dark-subtle: #27272a;
+            --bg-dark: #12291F;
+            --bg-dark-subtle: #1C3A2C;
             --text-primary: #1c1917;
             --text-secondary: #57534e;
             --text-muted: #a8a29e;
-            --accent: #10b981;
-            --accent-dark: #059669;
-            --accent-light: #d1fae5;
-            --success-light: #d1fae5;
+            --accent: #275E43;
+            --accent-dark: #1C4632;
+            --accent-light: #E7F2EC;
+            --success-light: #E7F2EC;
             --warning-light: #fef3c7;
             --warning-text: #b45309;
             --danger-light: #fee2e2;
             --danger-text: #dc2626;
             --info-light: #dbeafe;
             --info-text: #2563eb;
-            --purple: #8b5cf6;
-            --purple-light: #ede9fe;
+            --purple: #9C7B5C;
+            --purple-light: #F3ECE3;
             --border: #e7e5e4;
             --border-light: #f5f5f4;
-            --shadow-accent: 0 4px 14px rgba(16, 185, 129, 0.3);
+            --shadow-accent: 0 4px 14px rgba(39, 94, 67, 0.3);
             --radius-sm: 12px;
             --radius-md: 16px;
             --radius-lg: 24px;
@@ -45,13 +48,13 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         body {
-            font-family: 'DM Sans', -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             overflow-x: hidden;
         }
-        .serif { font-family: 'DM Serif Display', Georgia, serif; }
+        .serif { font-family: 'Instrument Serif', Georgia, serif; }
 
         /* NAV */
         .top-nav {
@@ -62,20 +65,20 @@
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-light); isolation: isolate;
         }
-        .logo { font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; gap: 0.6rem; }
+        .logo { font-size: 1.5rem; font-weight: 400; font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.6rem; }
         .logo-icon {
-            width: 36px; height: 36px; background: var(--accent);
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            width: 36px; height: 36px;
+            border-radius: 0; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(39, 94, 67, 0.3);
         }
-        .logo-icon svg { width: 18px; height: 18px; color: white; }
+        .logo-icon svg { width: 36px; height: 36px; }
         .nav-cta {
             position: relative; z-index: 1;
             background: var(--text-primary); color: white;
             padding: 0.6rem 1.25rem; border-radius: var(--radius-full);
             font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: all 0.2s;
         }
-        .nav-cta:hover { background: #27272a; }
+        .nav-cta:hover { background: #1C3A2C; }
 
         /* HERO */
         .hero {
@@ -85,8 +88,8 @@
         }
         .hero::before {
             content: ''; position: absolute; inset: 0;
-            background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(16, 185, 129, 0.08), transparent),
-                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(16, 185, 129, 0.05), transparent);
+            background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(39, 94, 67, 0.08), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(39, 94, 67, 0.05), transparent);
             pointer-events: none;
         }
         .hero-content { max-width: 660px; margin-bottom: 3rem; position: relative; z-index: 1; }
@@ -187,7 +190,7 @@
         /* EVIDENCE */
         .evidence-section {
             padding: 5rem 2rem 6rem;
-            background: linear-gradient(180deg, #18181b 0%, #27272a 100%);
+            background: linear-gradient(180deg, #12291F 0%, #1C3A2C 100%);
             color: white; overflow: hidden; position: relative;
         }
         .evidence-inner { max-width: 640px; margin: 0 auto; text-align: center; position: relative; z-index: 1; }
@@ -203,9 +206,9 @@
             transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), background 1.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 1.2s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative; overflow: hidden; opacity: 0.4;
         }
-        .discovery-card.found { opacity: 1; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.15); }
+        .discovery-card.found { opacity: 1; background: rgba(39, 94, 67, 0.05); border-color: rgba(39, 94, 67, 0.15); }
         .discovery-card.found .discovery-amount { color: var(--accent); }
-        .discovery-card.found .discovery-icon { background: rgba(16, 185, 129, 0.12); }
+        .discovery-card.found .discovery-icon { background: rgba(39, 94, 67, 0.12); }
         .discovery-left { display: flex; align-items: center; gap: 1rem; }
         .discovery-icon {
             width: 44px; height: 44px; border-radius: 12px;
@@ -236,9 +239,9 @@
             background: var(--accent); color: white;
             padding: 0.9rem 1.75rem; border-radius: var(--radius-full);
             font-weight: 600; font-size: 1rem;
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4); transition: all 0.25s; text-decoration: none;
+            box-shadow: 0 4px 20px rgba(39, 94, 67, 0.4); transition: all 0.25s; text-decoration: none;
         }
-        .evidence-cta:hover { background: var(--accent-dark); transform: translateY(-2px); box-shadow: 0 6px 28px rgba(16, 185, 129, 0.5); }
+        .evidence-cta:hover { background: var(--accent-dark); transform: translateY(-2px); box-shadow: 0 6px 28px rgba(39, 94, 67, 0.5); }
 
         /* HOW IT WORKS */
         .how-section { padding: 5rem 2rem 5.5rem; background: var(--bg-white); border-top: 1px solid var(--border-light); }
@@ -253,7 +256,7 @@
             border-radius: var(--radius-md); padding: 2rem 1.5rem 1.75rem;
             text-align: center; transition: all 0.3s;
         }
-        .step-card:hover { border-color: rgba(16,185,129,0.3); box-shadow: 0 8px 30px rgba(16,185,129,0.08); }
+        .step-card:hover { border-color: rgba(39,94,67,0.3); box-shadow: 0 8px 30px rgba(39,94,67,0.08); }
         .step-num {
             display: inline-flex; align-items: center; justify-content: center;
             width: 40px; height: 40px; border-radius: 50%;
@@ -282,7 +285,7 @@
             background: var(--bg-white); border: 1px solid var(--border);
             border-radius: var(--radius-md); padding: 1.1rem 1.25rem; transition: all 0.2s;
         }
-        .agent-card:hover { border-color: rgba(16,185,129,0.2); box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+        .agent-card:hover { border-color: rgba(39,94,67,0.2); box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
         .agent-icon {
             width: 42px; height: 42px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
@@ -362,7 +365,7 @@
 
         /* FOOTER */
         footer { padding: 2rem; text-align: center; background: var(--bg-primary); border-top: 1px solid var(--border-light); }
-        .footer-logo { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .footer-logo { font-weight: 400; font-size: 1.25rem; margin-bottom: 0.5rem; font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.01em; }
         .footer-text { font-size: 0.8rem; color: var(--text-muted); }
         .footer-links { margin-top: 0.75rem; display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap; }
         .footer-links a { font-size: 0.85rem; color: var(--text-secondary); text-decoration: none; }
@@ -390,10 +393,8 @@
     <!-- NAV -->
     <nav class="top-nav">
         <div class="logo">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
+            <div class="logo-icon" aria-hidden="true">
+                <svg viewBox="0 0 512 512" width="36" height="36" aria-hidden="true"><defs><linearGradient id="sg-nav" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A5DDC2"/><stop offset="1" stop-color="#6FBF97"/></linearGradient></defs><rect width="512" height="512" rx="122" fill="#12291F"/><path d="M 344 152 C 322 122 288 106 252 106 C 196 106 158 138 158 184 C 158 226 188 248 256 262 C 324 276 354 300 354 342 C 354 390 314 406 260 406 C 220 406 184 390 166 360" fill="none" stroke="url(#sg-nav)" stroke-width="70" stroke-linecap="butt"/></svg>
             </div>
             Savvy
         </div>
