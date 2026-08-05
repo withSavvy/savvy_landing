@@ -922,16 +922,16 @@
         </nav>
     </footer>
 
+    <script src="js/savvy-api-config.js"></script>
     <script>
         // ============================================
         // CONNECT TO YOUR APP & BACKEND
         // Set these to your real URLs. "Start Free Trial" / "Start free" → app URL.
         // Form at bottom can keep using waitlist API or your backend (see form handler below).
+        // API origin (canonical domain vs. localhost) is resolved by js/savvy-api-config.js.
         // ============================================
         const SAVVY_APP_URL = 'https://app.withsavvy.ai/#sign-up';
-        const SAVVY_SIGNUP_API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000/api/signup'
-            : 'https://savvy-backend-qyfl.onrender.com/api/signup';
+        const SAVVY_SIGNUP_API = `${window.SAVVY_API_ORIGIN}/api/signup`;
 
         document.querySelectorAll('.js-app-cta[data-app-url]').forEach(function (el) {
             el.href = SAVVY_APP_URL;

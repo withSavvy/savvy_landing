@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Savvy — Admin Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous"></script>
+    <script src="js/savvy-api-config.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -565,7 +566,7 @@
     <!-- Config bar — Waitlist API -->
     <div class="config-bar" id="configWaitlist">
         <label for="apiUrl">Waitlist API</label>
-        <input type="text" id="apiUrl" value="https://savvy-backend-qyfl.onrender.com" placeholder="https://your-backend.onrender.com">
+        <input type="text" id="apiUrl" placeholder="https://your-backend.onrender.com">
         <button class="btn btn-sm" onclick="refresh()">Connect</button>
         <span class="last-refreshed" id="lastRefreshed"></span>
     </div>
@@ -573,7 +574,7 @@
     <!-- Config bar — Backend API (Card Review) -->
     <div class="config-bar" id="configCards" style="display:none">
         <label for="backendUrl">Backend</label>
-        <input type="text" id="backendUrl" value="https://savvy-backend-qyfl.onrender.com" placeholder="https://your-backend.onrender.com">
+        <input type="text" id="backendUrl" placeholder="https://your-backend.onrender.com">
         <label for="adminKey" style="margin-left:8px">Key</label>
         <input type="password" id="adminKey" placeholder="admin API key" style="max-width:160px">
         <button class="btn btn-sm" onclick="refreshCards()">Connect</button>
@@ -1117,12 +1118,16 @@ function showToast(msg, type = 'success') {
         document.getElementById('apiUrl').value = fromParam;
     } else if (saved) {
         document.getElementById('apiUrl').value = saved;
+    } else {
+        document.getElementById('apiUrl').value = window.SAVVY_API_ORIGIN;
     }
 
     // Load saved backend URL for card review
     const savedBackend = localStorage.getItem('savvy_dashboard_backend');
     if (savedBackend) {
         document.getElementById('backendUrl').value = savedBackend;
+    } else {
+        document.getElementById('backendUrl').value = window.SAVVY_API_ORIGIN;
     }
     const savedKey = localStorage.getItem('savvy_dashboard_admin_key');
     if (savedKey) {

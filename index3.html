@@ -748,10 +748,10 @@
         <nav class="footer-links" aria-label="Footer"><a href="privacy.html">Privacy &amp; Trust</a></nav>
     </footer>
 
+    <script src="js/savvy-api-config.js"></script>
     <script>
-        const SAVVY_API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000'
-            : 'https://savvy-backend-qyfl.onrender.com';
+        // API origin (canonical domain vs. localhost) is resolved by js/savvy-api-config.js.
+        const SAVVY_API_BASE = window.SAVVY_API_ORIGIN;
 
         // ============================================
         // Waitlist form
