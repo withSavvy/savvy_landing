@@ -41,11 +41,13 @@ Standing rule (Sara, 2026-08-05): a session never carries a loose item.
   Your own "we should probably also…" is the item most likely to vanish.
 - **Drain the ledger before the session ends.** Each item finishes at exactly
   one of three dispositions:
-  1. **Addressed** — done *and verified*; the pushed diff or passing check is
-     the proof, not "I made the edit".
-  2. **Captured** — turned into a durable prompt someone can pick up cold: a
+  1. **Addressed** — done *and verified*; the proof is the pushed diff or a CI
+     check green on the pushed commit. A green local run is evidence, not
+     proof, and "I made the edit" is neither.
+  2. **Captured** — written into a durable location someone can pick up cold: a
      work order filed via the self-serve intake described in this file, or a
-     self-contained prompt written into the PR/handoff.
+     self-contained prompt in the PR body or handoff note. Never the session
+     transcript alone — that dies with the container.
   3. **Answered** — consciously declined, deferred, or resolved as a non-issue,
      with one sentence of why.
 
