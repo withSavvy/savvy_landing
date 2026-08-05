@@ -40,6 +40,11 @@ assert_hidden ".github/workflows/deploy.yml"
 assert_hidden "some-file-nobody-has-created-yet.html"
 assert_hidden "nested/new/path-that-does-not-exist.json"
 
+# `_headers` is Cloudflare config, not a page. Wrangler reads it off disk
+# regardless of this file and always excludes it from the upload; un-ignoring
+# it here would serve the config publicly at /_headers.
+assert_hidden "_headers"
+
 assert_published "index.html"
 assert_published "privacy.html"
 assert_published "robots.txt"

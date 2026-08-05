@@ -18,6 +18,9 @@ jobs:
       - name: Verify .assetsignore allowlist
         run: bash .github/scripts/verify-assetsignore.sh
 
+      - name: Verify security response headers
+        run: bash .github/scripts/verify-security-headers.sh
+
       - name: Validate HTML files
         run: |
           pip install html5validator
