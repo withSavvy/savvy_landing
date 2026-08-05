@@ -12,3 +12,5 @@
 !/sitemap.xml
 !/Assets/
 !/Assets/**
+!/js/
+!/js/**
