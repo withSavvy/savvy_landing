@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service &mdash; Savvy</title>
+    <meta name="description" content="The terms that govern your use of Savvy: what the service does, your account, connected financial data, SMS messaging, and the limits of our liability.">
+    <link rel="canonical" href="https://withsavvy.ai/terms">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Savvy">
+    <meta property="og:title" content="Terms of Service &mdash; Savvy">
+    <meta property="og:description" content="The terms that govern your use of Savvy: what the service does, your account, connected financial data, SMS messaging, and the limits of our liability.">
+    <meta property="og:url" content="https://withsavvy.ai/terms">
+    <meta property="og:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Terms of Service &mdash; Savvy">
+    <meta name="twitter:description" content="The terms that govern your use of Savvy: what the service does, your account, connected financial data, SMS messaging, and the limits of our liability.">
+    <meta name="twitter:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
+    <link rel="icon" type="image/svg+xml" href="/Assets/brand/savvy-mark.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/Assets/brand/favicon-32.png">
+    <link rel="apple-touch-icon" href="/Assets/brand/apple-touch-icon.png">
+    <meta name="theme-color" content="#12291F">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"></noscript>
+<style>
+        :root {
+            --bg-primary: #fafaf9;
+            --bg-white: #ffffff;
+            --bg-subtle: #f5f5f4;
+            --text-primary: #1c1917;
+            --text-secondary: #78716c;
+            --text-muted: #a8a29e;
+            --accent: #275E43;
+            --accent-dark: #1C4632;
+            --accent-deeper: #1C4632;
+            --accent-light: #E7F2EC;
+            --border: #e7e5e4;
+            --border-light: #f5f5f4;
+            --shadow-accent: 0 4px 14px rgba(39, 94, 67, 0.3);
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-full: 100px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+        .serif { font-family: 'Instrument Serif', Georgia, serif; }
+
+        a:focus-visible,
+        button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* NAV */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(250, 250, 249, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-light);
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 400;
+            font-family: 'Instrument Serif', Georgia, serif;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        .logo-icon {
+            width: 36px; height: 36px;
+            border-radius: 0;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(39, 94, 67, 0.3);
+        }
+        .logo-icon svg { width: 36px; height: 36px; }
+        .nav-cta {
+            background: var(--text-primary);
+            color: white;
+            padding: 0.6rem 1.25rem;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .nav-cta:hover { background: #1C3A2C; }
+
+        /* HERO */
+        .hero {
+            padding: 9rem 2rem 4rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(39, 94, 67, 0.07), transparent);
+            pointer-events: none;
+        }
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent-light);
+            color: var(--accent-deeper);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.35rem 0.9rem;
+            border-radius: var(--radius-full);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .serif { font-weight: 400; font-style: italic; }
+        .hero-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .hero-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .hero-sub {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            max-width: 580px;
+            margin: 0 auto 1.5rem;
+            line-height: 1.7;
+        }
+
+        /* ADVANCE-NOTICE BAND */
+        .notice-band {
+            max-width: 680px;
+            margin: 0 auto 3.5rem;
+            background: var(--accent-light);
+            border: 1px solid rgba(39, 94, 67, 0.25);
+            border-radius: var(--radius-md);
+            padding: 1.1rem 1.5rem;
+            text-align: center;
+        }
+        .notice-band p { font-size: 0.95rem; color: #065f46; line-height: 1.6; }
+        .notice-band strong { color: #064e3b; }
+        .notice-kicker {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent-deeper);
+            margin-bottom: 0.35rem;
+        }
+
+        /* LAYOUT */
+        .page-body {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 0 2rem 6rem;
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 4rem;
+            align-items: start;
+        }
+
+        /* STICKY TOC */
+        .toc {
+            position: sticky;
+            top: 90px;
+        }
+        .toc-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+        .toc-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+        .toc-list a {
+            display: block;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            border-left: 2px solid transparent;
+            transition: all 0.15s;
+            line-height: 1.4;
+        }
+        .toc-list a:hover,
+        .toc-list a.active {
+            color: var(--accent-dark);
+            background: var(--accent-light);
+            border-left-color: var(--accent);
+        }
+        .toc-group {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0.9rem 0.75rem 0.25rem;
+        }
+        .toc-list .toc-group:first-child { padding-top: 0; }
+        .toc-contact {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--bg-subtle);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+        .toc-contact p {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .toc-contact a {
+            color: var(--accent-dark);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        /* CONTENT */
+        .content {
+            min-width: 0;
+        }
+
+        .section {
+            margin-bottom: 3rem;
+            scroll-margin-top: 90px;
+        }
+
+        .section-number {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--accent-deeper);
+            text-transform: uppercase;
+            margin-bottom: 0.4rem;
+        }
+
+        .section h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .section p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.9rem;
+            line-height: 1.75;
+        }
+
+        .section p:last-child { margin-bottom: 0; }
+
+        .section ul {
+            list-style: none;
+            margin: 0.75rem 0 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .section ul li {
+            font-size: 0.93rem;
+            color: var(--text-secondary);
+            padding-left: 1.4rem;
+            position: relative;
+            line-height: 1.65;
+        }
+
+        .section ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .section ul li strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Callout box */
+        .callout {
+            background: var(--accent-light);
+            border: 1px solid rgba(39, 94, 67, 0.2);
+            border-radius: var(--radius-md);
+            padding: 1.25rem 1.5rem;
+            margin: 1.25rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+        .callout-icon { font-size: 1.25rem; flex-shrink: 0; margin-top: 0.05rem; }
+        .callout-text { font-size: 0.9rem; color: #065f46; line-height: 1.6; }
+        .callout-text strong { color: #064e3b; }
+
+        /* Warning callout */
+        .callout.warning {
+            background: #fef3c7;
+            border-color: rgba(180, 83, 9, 0.2);
+        }
+        .callout.warning .callout-text { color: #92400e; }
+        .callout.warning .callout-text strong { color: #78350f; }
+
+        /* Divider */
+        .section-divider {
+            height: 1px;
+            background: var(--border-light);
+            margin-bottom: 3rem;
+        }
+
+        /* Highlight table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0 0.9rem;
+            font-size: 0.875rem;
+        }
+        .data-table th {
+            text-align: left;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .data-table td {
+            padding: 0.65rem 0.75rem;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            vertical-align: top;
+            line-height: 1.5;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+
+        /* Rights chips */
+        .rights-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+        .right-chip {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.9rem 1rem;
+        }
+        .right-chip-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .right-chip p {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0 !important;
+        }
+
+        /* Footer */
+        footer {
+            padding: 2rem;
+            text-align: center;
+            background: var(--bg-white);
+            border-top: 1px solid var(--border-light);
+        }
+        .footer-logo { font-weight: 400; font-size: 1.25rem; margin-bottom: 0.4rem; font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.01em; }
+        .footer-text { font-size: 0.8rem; color: var(--text-muted); }
+        .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.75rem; }
+        .footer-links a { font-size: 0.8rem; color: var(--text-muted); text-decoration: none; }
+        .footer-links a:hover { color: var(--accent); }
+
+        /* Mobile */
+        @media (max-width: 720px) {
+            .page-body { grid-template-columns: 1fr; gap: 2rem; }
+            .toc { display: none; }
+            .hero { padding: 8rem 1.5rem 3rem; }
+            .notice-band { margin: 0 1.5rem 2.5rem; }
+        }
+        @media (max-width: 600px) {
+            .rights-grid { grid-template-columns: 1fr; }
+            .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .data-table td:first-child { white-space: normal; }
+        }
+    </style>
+
+</head>
+<body>
+
+    <nav aria-label="Primary">
+        <a href="index.html" class="logo">
+            <div class="logo-icon" aria-hidden="true">
+                <svg viewBox="0 0 512 512" width="36" height="36" aria-hidden="true"><defs><linearGradient id="sg-nav" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A5DDC2"/><stop offset="1" stop-color="#6FBF97"/></linearGradient></defs><rect width="512" height="512" rx="122" fill="#12291F"/><path d="M 344 152 C 322 122 288 106 252 106 C 196 106 158 138 158 184 C 158 226 188 248 256 262 C 324 276 354 300 354 342 C 354 390 314 406 260 406 C 220 406 184 390 166 360" fill="none" stroke="url(#sg-nav)" stroke-width="70" stroke-linecap="butt"/></svg>
+            </div>
+            Savvy
+        </a>
+        <a href="https://app.withsavvy.ai/#sign-up" class="nav-cta">Get started free</a>
+    </nav>
+
+    <div class="hero">
+        <div class="hero-eyebrow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Terms of Service
+        </div>
+        <h1>The rules of the road,<br><span class="serif">in plain language.</span></h1>
+        <p class="hero-sub">What Savvy does, what it deliberately does not do, and what each of us is responsible for. Written to be read, not skimmed past.</p>
+        <div class="hero-meta">
+            <span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Effective: August 12, 2026
+            </span>
+            <span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Last updated: August 12, 2026
+            </span>
+            <span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Sabera Daqiq, DBA Savvy
+            </span>
+        </div>
+    </div>
+
+    <div class="notice-band">
+        <p>
+            <span class="notice-kicker">Read this first</span>
+            <strong>Savvy is an informational tool, not a financial advisor &mdash; and it can never move your money.</strong>
+        </p>
+    </div>
+
+    <div class="page-body">
+
+        <aside class="toc">
+            <div class="toc-label">On this page</div>
+            <ul class="toc-list" id="tocList">
+                <li><a href="#agreement">Agreement to These Terms</a></li>
+                <li><a href="#what-savvy-is">What Savvy Is — and What It Is Not</a></li>
+                <li><a href="#eligibility">Eligibility</a></li>
+                <li><a href="#your-account">Your Account</a></li>
+                <li><a href="#financial-data">Connecting Financial Accounts</a></li>
+                <li><a href="#sms">SMS & Text Messaging</a></li>
+                <li><a href="#acceptable-use">Acceptable Use</a></li>
+                <li><a href="#intellectual-property">Intellectual Property</a></li>
+                <li><a href="#third-party">Third-Party Services</a></li>
+                <li><a href="#disclaimers">Disclaimers</a></li>
+                <li><a href="#liability">Limitation of Liability</a></li>
+                <li><a href="#termination">Termination</a></li>
+                <li><a href="#changes">Changes to These Terms</a></li>
+                <li><a href="#governing-law">Governing Law</a></li>
+                <li><a href="#contact">Contact Us</a></li>
+            </ul>
+            <div class="toc-contact">
+                <p>Questions? Email us at<br><a href="mailto:support@withsavvy.ai">support@withsavvy.ai</a></p>
+            </div>
+        </aside>
+
+        <main>
+            <div class="section" id="agreement">
+                <div class="section-number">01</div>
+                <h2>Agreement to These Terms</h2>
+                <p>These Terms of Service ("Terms") govern your use of the Savvy application and the website at withsavvy.ai (together, the "Service"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.</p>
+                <p>Savvy is operated by Sabera Daqiq, a sole proprietorship doing business as Savvy ("Savvy," "we," "us," or "our").</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="what-savvy-is">
+                <div class="section-number">02</div>
+                <h2>What Savvy Is &mdash; and What It Is Not</h2>
+                <p>Savvy helps you find money you have already earned: expiring card benefits and statement credits, forgotten gift cards, pending refunds, and unwanted subscriptions. We read your connected account activity, match it against a catalog of card benefits, and remind you before value expires.</p>
+                <ul>
+                    <li><strong>Savvy is an informational tool.</strong> We surface benefits and deadlines. We do not move money, make payments, or transact on your behalf.</li>
+                    <li><strong>Savvy is not a financial advisor.</strong> Nothing in the Service is financial, tax, legal, or investment advice. Decisions you make about your money are your own.</li>
+                    <li><strong>Savvy is not a bank</strong> and is not affiliated with, endorsed by, or sponsored by any card issuer or financial institution whose benefits we describe.</li>
+                    <li><strong>Benefit information can change.</strong> Issuers change terms without notice. We work to keep our catalog accurate and traceable to issuer sources, but you should confirm any benefit with your issuer before relying on it.</li>
+                </ul>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="eligibility">
+                <div class="section-number">03</div>
+                <h2>Eligibility</h2>
+                <p>You must be at least 18 years old and able to form a binding contract to use Savvy. The Service is offered to users in the United States. By using Savvy you represent that you meet these requirements.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="your-account">
+                <div class="section-number">04</div>
+                <h2>Your Account</h2>
+                <ul>
+                    <li>You are responsible for the accuracy of the information you provide and for all activity under your account.</li>
+                    <li>Keep your login credentials confidential. Notify us at <a href="mailto:security@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">security@withsavvy.ai</a> immediately if you suspect unauthorized access.</li>
+                    <li>One person, one account. Do not share your account or transfer it to anyone else.</li>
+                </ul>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="financial-data">
+                <div class="section-number">05</div>
+                <h2>Connecting Financial Accounts</h2>
+                <p>Savvy connects to your financial accounts through <strong>Plaid</strong>. That connection is <strong>read-only</strong>: Savvy can see transaction and account data, and cannot move funds, initiate payments, or change anything at your institution.</p>
+                <ul>
+                    <li>You authorize us to retrieve and process that data solely to operate the Service for you.</li>
+                    <li>You can disconnect an account at any time from within the app. See our <a href="privacy.html" style="color:var(--accent-dark);font-weight:600;">Privacy &amp; Trust</a> page for how data is handled, retained, and deleted.</li>
+                </ul>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="sms">
+                <div class="section-number">06</div>
+                <h2>SMS &amp; Text Messaging</h2>
+                <p>Savvy offers an optional text-message program for account notifications and benefit reminders. Participation is entirely voluntary and is never a condition of using Savvy.</p>
+                <ul>
+                    <li><strong>Opt-in.</strong> You opt in inside the app by entering your own mobile number and actively ticking a consent checkbox that is unchecked by default. Before we send anything, you must also confirm possession of the number from that device &mdash; by texting START or VERIFY to our number, or by entering a one-time code we send you.</li>
+                    <li><strong>Message frequency</strong> varies, typically around weekly.</li>
+                    <li><strong>Message and data rates may apply</strong> according to your carrier plan.</li>
+                    <li><strong>Opt-out.</strong> Reply <strong>STOP</strong> to any message to cancel, or switch the setting off in the app. Reply <strong>HELP</strong> for assistance.</li>
+                    <li><strong>Your opt-in data is never sold or shared.</strong> Your mobile number and SMS consent are never sold, shared, or disclosed to third parties for marketing or promotional purposes.</li>
+                    <li>Carriers are not liable for delayed or undelivered messages.</li>
+                </ul>
+                <p>The full opt-in flow, including the exact consent language shown on screen, is published at <a href="sms-consent.html" style="color:var(--accent-dark);font-weight:600;">withsavvy.ai/sms-consent</a>.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="acceptable-use">
+                <div class="section-number">07</div>
+                <h2>Acceptable Use</h2>
+                <p>When using Savvy, you agree not to:</p>
+                <ul>
+                    <li>Access accounts or data that are not yours, or provide credentials you are not authorized to use.</li>
+                    <li>Scrape, reverse-engineer, decompile, or attempt to extract our benefit catalog or source code.</li>
+                    <li>Interfere with, overload, or attempt to gain unauthorized access to the Service or its infrastructure.</li>
+                    <li>Use the Service to break the law, infringe someone else's rights, or transmit malware.</li>
+                    <li>Resell, sublicense, or commercially exploit the Service without our written permission.</li>
+                </ul>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="intellectual-property">
+                <div class="section-number">08</div>
+                <h2>Intellectual Property</h2>
+                <p>The Service, including its software, benefit catalog, design, and the Savvy name and marks, belongs to us and is protected by intellectual property law. We grant you a limited, revocable, non-exclusive, non-transferable license to use the Service for your own personal, non-commercial purposes.</p>
+                <p>Card issuer names and trademarks referenced in the Service belong to their respective owners and are used only to identify benefits.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="third-party">
+                <div class="section-number">09</div>
+                <h2>Third-Party Services</h2>
+                <p>Savvy depends on third-party providers, including Plaid for account connectivity and other vendors for hosting, messaging, and analytics. Your use of those services may be governed by their own terms. We are not responsible for the acts, omissions, or availability of third parties.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="disclaimers">
+                <div class="section-number">10</div>
+                <h2>Disclaimers</h2>
+                <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.</p>
+                <p>We do not warrant that the Service will be uninterrupted, timely, secure, or error-free, or that benefit information will be complete or current. You are responsible for verifying benefits with your issuer before acting on them.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="liability">
+                <div class="section-number">11</div>
+                <h2>Limitation of Liability</h2>
+                <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, SAVVY WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, DATA, OR EXPIRED BENEFITS, ARISING OUT OF OR RELATING TO YOUR USE OF THE SERVICE.</p>
+                <p>Our total liability for any claim relating to the Service will not exceed the greater of the amount you paid us in the twelve months before the claim, or one hundred U.S. dollars.</p>
+                <p>Some jurisdictions do not allow certain limitations, so parts of this section may not apply to you.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="termination">
+                <div class="section-number">12</div>
+                <h2>Termination</h2>
+                <p>You may stop using Savvy and delete your account at any time from within the app. We may suspend or terminate your access if you breach these Terms, if required by law, or if we discontinue the Service. Sections that by their nature should survive termination &mdash; including intellectual property, disclaimers, and limitation of liability &mdash; will survive.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="changes">
+                <div class="section-number">13</div>
+                <h2>Changes to These Terms</h2>
+                <p>We may update these Terms as the Service evolves. When we make material changes we will update the "Last updated" date on this page and, where appropriate, notify you in the app. Continuing to use Savvy after a change means you accept the revised Terms.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="governing-law">
+                <div class="section-number">14</div>
+                <h2>Governing Law</h2>
+                <p>These Terms are governed by the laws of the State of California, without regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal courts located in San Francisco County, California, and you consent to their jurisdiction.</p>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section" id="contact">
+                <div class="section-number">15</div>
+                <h2>Contact Us</h2>
+                <p>Questions about these Terms:</p>
+                <ul>
+                    <li><strong>Email:</strong> <a href="mailto:support@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">support@withsavvy.ai</a></li>
+                    <li><strong>Security issues:</strong> <a href="mailto:security@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">security@withsavvy.ai</a></li>
+                </ul>
+                <p>We respond to all inquiries within 5 business days.</p>
+            </div>
+
+            <div class="section-divider"></div>
+
+        </main>
+    </div>
+
+    <footer>
+        <div class="footer-logo">Savvy</div>
+        <p class="footer-text">&copy; 2026 Savvy &middot; Operated by Sabera Daqiq, a sole proprietorship doing business as Savvy</p>
+        <div class="footer-links">
+            <a href="privacy.html">Privacy &amp; Trust</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="sms-consent.html">SMS Consent</a>
+            <a href="mailto:support@withsavvy.ai">Contact</a>
+        </div>
+    </footer>
+
+    <script>
+        const sections = document.querySelectorAll('.section[id]');
+        const tocLinks = document.querySelectorAll('.toc-list a');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    tocLinks.forEach(link => link.classList.remove('active'));
+                    const active = document.querySelector('.toc-list a[href="#' + entry.target.id + '"]');
+                    if (active) active.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-20% 0px -70% 0px' });
+        sections.forEach(s => observer.observe(s));
+    </script>
+</body>
+</html>
