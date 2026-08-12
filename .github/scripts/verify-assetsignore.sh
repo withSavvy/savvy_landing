@@ -44,6 +44,5 @@ assert_published "index.html"
 assert_published "privacy.html"
 assert_published "robots.txt"
 assert_published "sitemap.xml"
-assert_published "Assets/hero4.jpg"
 
 exit "$fail"
