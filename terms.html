@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terms of Service &mdash; Savvy</title>
-    <meta name="description" content="The terms that govern your use of Savvy: what the service does, your account, connected financial data, SMS messaging, and the limits of our liability.">
+    <title>Terms of Service — Savvy</title>
+    <meta name="description" content="The terms that govern your use of Savvy: what the service is, texting and email forwarding rules, billing, and your responsibilities.">
     <link rel="canonical" href="https://withsavvy.ai/terms">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Savvy">
-    <meta property="og:title" content="Terms of Service &mdash; Savvy">
-    <meta property="og:description" content="The terms that govern your use of Savvy: what the service does, your account, connected financial data, SMS messaging, and the limits of our liability.">
+    <meta property="og:title" content="Terms of Service — Savvy">
+    <meta property="og:description" content="The terms that govern your use of Savvy: what the service is, texting and email forwarding rules, billing, and your responsibilities.">
     <meta property="og:url" content="https://withsavvy.ai/terms">
     <meta property="og:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Terms of Service &mdash; Savvy">
-    <meta name="twitter:description" content="The terms that govern your use of Savvy: what the service does, your account, connected financial data, SMS messaging, and the limits of our liability.">
+    <meta name="twitter:title" content="Terms of Service — Savvy">
+    <meta name="twitter:description" content="The terms that govern your use of Savvy.">
     <meta name="twitter:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
     <link rel="icon" type="image/svg+xml" href="/Assets/brand/savvy-mark.svg">
     <link rel="icon" type="image/png" sizes="32x32" href="/Assets/brand/favicon-32.png">
@@ -26,7 +26,26 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"></noscript>
-<style>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Terms of Service — Savvy",
+        "description": "Terms of Service for Savvy, the credit-card benefit tracking service.",
+        "url": "https://withsavvy.ai/terms",
+        "isPartOf": {
+            "@type": "WebSite",
+            "name": "Savvy",
+            "url": "https://withsavvy.ai/"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "Savvy",
+            "url": "https://withsavvy.ai/"
+        }
+    }
+    </script>
+    <style>
         :root {
             --bg-primary: #fafaf9;
             --bg-white: #ffffff;
@@ -162,28 +181,6 @@
             line-height: 1.7;
         }
 
-        /* ADVANCE-NOTICE BAND */
-        .notice-band {
-            max-width: 680px;
-            margin: 0 auto 3.5rem;
-            background: var(--accent-light);
-            border: 1px solid rgba(39, 94, 67, 0.25);
-            border-radius: var(--radius-md);
-            padding: 1.1rem 1.5rem;
-            text-align: center;
-        }
-        .notice-band p { font-size: 0.95rem; color: #065f46; line-height: 1.6; }
-        .notice-band strong { color: #064e3b; }
-        .notice-kicker {
-            display: block;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--accent-deeper);
-            margin-bottom: 0.35rem;
-        }
-
         /* LAYOUT */
         .page-body {
             max-width: 780px;
@@ -231,15 +228,6 @@
             background: var(--accent-light);
             border-left-color: var(--accent);
         }
-        .toc-group {
-            font-size: 0.68rem;
-            font-weight: 700;
-            letter-spacing: 0.09em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            padding: 0.9rem 0.75rem 0.25rem;
-        }
-        .toc-list .toc-group:first-child { padding-top: 0; }
         .toc-contact {
             margin-top: 1.5rem;
             padding: 1rem;
@@ -356,62 +344,6 @@
             margin-bottom: 3rem;
         }
 
-        /* Highlight table */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0 0.9rem;
-            font-size: 0.875rem;
-        }
-        .data-table th {
-            text-align: left;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-            padding: 0.5rem 0.75rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .data-table td {
-            padding: 0.65rem 0.75rem;
-            border-bottom: 1px solid var(--border-light);
-            color: var(--text-secondary);
-            vertical-align: top;
-            line-height: 1.5;
-        }
-        .data-table tr:last-child td { border-bottom: none; }
-        .data-table td:first-child { font-weight: 600; color: var(--text-primary); white-space: nowrap; }
-
-        /* Rights chips */
-        .rights-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin: 1rem 0;
-        }
-        .right-chip {
-            background: var(--bg-subtle);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 0.9rem 1rem;
-        }
-        .right-chip-title {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 0.3rem;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        .right-chip p {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin: 0 !important;
-        }
-
         /* Footer */
         footer {
             padding: 2rem;
@@ -430,15 +362,8 @@
             .page-body { grid-template-columns: 1fr; gap: 2rem; }
             .toc { display: none; }
             .hero { padding: 8rem 1.5rem 3rem; }
-            .notice-band { margin: 0 1.5rem 2.5rem; }
-        }
-        @media (max-width: 600px) {
-            .rights-grid { grid-template-columns: 1fr; }
-            .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            .data-table td:first-child { white-space: normal; }
         }
     </style>
-
 </head>
 <body>
 
@@ -457,50 +382,40 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             Terms of Service
         </div>
-        <h1>The rules of the road,<br><span class="serif">in plain language.</span></h1>
-        <p class="hero-sub">What Savvy does, what it deliberately does not do, and what each of us is responsible for. Written to be read, not skimmed past.</p>
+        <h1>The deal, in<br><span class="serif">plain language.</span></h1>
+        <p class="hero-sub">These terms govern your use of Savvy. We wrote them to be readable — what Savvy is, what it isn't, and what we each agree to.</p>
         <div class="hero-meta">
             <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                Effective: August 12, 2026
-            </span>
-            <span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Last updated: August 12, 2026
+                Last updated: August 11, 2026
             </span>
             <span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Sabera Daqiq, DBA Savvy
+                Savvy
             </span>
         </div>
     </div>
 
-    <div class="notice-band">
-        <p>
-            <span class="notice-kicker">Read this first</span>
-            <strong>Savvy is an informational tool, not a financial advisor &mdash; and it can never move your money.</strong>
-        </p>
-    </div>
-
     <div class="page-body">
 
+        <!-- TABLE OF CONTENTS -->
         <aside class="toc">
             <div class="toc-label">On this page</div>
             <ul class="toc-list" id="tocList">
-                <li><a href="#agreement">Agreement to These Terms</a></li>
-                <li><a href="#what-savvy-is">What Savvy Is — and What It Is Not</a></li>
-                <li><a href="#eligibility">Eligibility</a></li>
-                <li><a href="#your-account">Your Account</a></li>
-                <li><a href="#financial-data">Connecting Financial Accounts</a></li>
-                <li><a href="#sms">SMS & Text Messaging</a></li>
+                <li><a href="#agreement">Agreement to Terms</a></li>
+                <li><a href="#what-savvy-is">What Savvy Is (and Isn't)</a></li>
+                <li><a href="#accounts">Eligibility &amp; Accounts</a></li>
+                <li><a href="#billing">Free Trial &amp; Billing</a></li>
+                <li><a href="#sms-terms">Text Messaging</a></li>
+                <li><a href="#email-forwarding">Email Forwarding</a></li>
+                <li><a href="#connected-accounts">Connected Accounts</a></li>
                 <li><a href="#acceptable-use">Acceptable Use</a></li>
-                <li><a href="#intellectual-property">Intellectual Property</a></li>
-                <li><a href="#third-party">Third-Party Services</a></li>
-                <li><a href="#disclaimers">Disclaimers</a></li>
-                <li><a href="#liability">Limitation of Liability</a></li>
+                <li><a href="#accuracy">Benefit Data &amp; Accuracy</a></li>
+                <li><a href="#ip">Intellectual Property</a></li>
+                <li><a href="#disclaimers">Disclaimers &amp; Liability</a></li>
                 <li><a href="#termination">Termination</a></li>
-                <li><a href="#changes">Changes to These Terms</a></li>
                 <li><a href="#governing-law">Governing Law</a></li>
+                <li><a href="#changes">Changes to These Terms</a></li>
                 <li><a href="#contact">Contact Us</a></li>
             </ul>
             <div class="toc-contact">
@@ -508,159 +423,182 @@
             </div>
         </aside>
 
-        <main>
+        <!-- CONTENT -->
+        <main class="content">
+
             <div class="section" id="agreement">
                 <div class="section-number">01</div>
-                <h2>Agreement to These Terms</h2>
-                <p>These Terms of Service ("Terms") govern your use of the Savvy application and the website at withsavvy.ai (together, the "Service"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.</p>
-                <p>Savvy is operated by Sabera Daqiq, a sole proprietorship doing business as Savvy ("Savvy," "we," "us," or "our").</p>
+                <h2>Agreement to Terms</h2>
+                <p>These Terms of Service ("Terms") are an agreement between you and Savvy ("Savvy," "we," "us"). By creating an account or using Savvy — the website, the app at app.withsavvy.ai, texting with Savvy, or forwarding email to a Savvy address — you agree to these Terms and to our <a href="privacy.html" style="color:var(--accent-dark);font-weight:600;">Privacy Policy</a>.</p>
+                <p>If you do not agree, do not use Savvy.</p>
             </div>
 
             <div class="section-divider"></div>
+
             <div class="section" id="what-savvy-is">
                 <div class="section-number">02</div>
-                <h2>What Savvy Is &mdash; and What It Is Not</h2>
-                <p>Savvy helps you find money you have already earned: expiring card benefits and statement credits, forgotten gift cards, pending refunds, and unwanted subscriptions. We read your connected account activity, match it against a catalog of card benefits, and remind you before value expires.</p>
-                <ul>
-                    <li><strong>Savvy is an informational tool.</strong> We surface benefits and deadlines. We do not move money, make payments, or transact on your behalf.</li>
-                    <li><strong>Savvy is not a financial advisor.</strong> Nothing in the Service is financial, tax, legal, or investment advice. Decisions you make about your money are your own.</li>
-                    <li><strong>Savvy is not a bank</strong> and is not affiliated with, endorsed by, or sponsored by any card issuer or financial institution whose benefits we describe.</li>
-                    <li><strong>Benefit information can change.</strong> Issuers change terms without notice. We work to keep our catalog accurate and traceable to issuer sources, but you should confirm any benefit with your issuer before relying on it.</li>
-                </ul>
+                <h2>What Savvy Is (and Isn't)</h2>
+                <p>Savvy helps you track and use the benefits, credits, and rewards attached to your credit cards: it catalogs what your cards offer, reminds you before value expires, answers "which card should I use?", and files receipts, gift cards, trials, and tracking numbers you send it.</p>
+                <div class="callout">
+                    <div class="callout-icon">ℹ️</div>
+                    <div class="callout-text"><strong>Savvy is an information and reminder service — not financial, legal, or tax advice.</strong> Card recommendations are computed from published rewards data and your saved cards; they are suggestions, not professional advice. Decisions about what to buy and how to pay are yours.</div>
+                </div>
+                <div class="callout warning">
+                    <div class="callout-icon">⚠️</div>
+                    <div class="callout-text"><strong>Savvy is not affiliated with, endorsed by, or sponsored by any card issuer or network.</strong> All product and company names are trademarks of their respective holders. Your card benefits are governed by your agreement with your issuer, not by Savvy.</div>
+                </div>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="eligibility">
+
+            <div class="section" id="accounts">
                 <div class="section-number">03</div>
-                <h2>Eligibility</h2>
-                <p>You must be at least 18 years old and able to form a binding contract to use Savvy. The Service is offered to users in the United States. By using Savvy you represent that you meet these requirements.</p>
+                <h2>Eligibility &amp; Accounts</h2>
+                <ul>
+                    <li><strong>You must be 18 or older</strong> and able to form a binding contract to use Savvy.</li>
+                    <li><strong>Savvy is offered for personal, non-commercial use</strong> in the United States.</li>
+                    <li><strong>Keep your account information accurate</strong> — including the phone number and email addresses you link. Only link a phone number that is yours.</li>
+                    <li><strong>One account per person; one account per phone number.</strong> You are responsible for activity under your account and for keeping your login credentials secure.</li>
+                </ul>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="your-account">
+
+            <div class="section" id="billing">
                 <div class="section-number">04</div>
-                <h2>Your Account</h2>
+                <h2>Free Trial &amp; Billing</h2>
                 <ul>
-                    <li>You are responsible for the accuracy of the information you provide and for all activity under your account.</li>
-                    <li>Keep your login credentials confidential. Notify us at <a href="mailto:security@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">security@withsavvy.ai</a> immediately if you suspect unauthorized access.</li>
-                    <li>One person, one account. Do not share your account or transfer it to anyone else.</li>
+                    <li><strong>Free trial.</strong> New accounts start with a free trial (currently 30 days). When it ends, continued use requires a paid subscription.</li>
+                    <li><strong>Pricing.</strong> The current price and billing period are shown at checkout before you pay. Subscriptions renew automatically until cancelled.</li>
+                    <li><strong>Cancelling.</strong> You can cancel anytime in Settings; your subscription then runs to the end of the paid period and does not renew. Except where required by law, fees already paid are not refunded.</li>
+                    <li><strong>Changes.</strong> If we change prices, we will notify you in advance and the new price applies from your next renewal.</li>
                 </ul>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="financial-data">
+
+            <div class="section" id="sms-terms">
                 <div class="section-number">05</div>
-                <h2>Connecting Financial Accounts</h2>
-                <p>Savvy connects to your financial accounts through <strong>Plaid</strong>. That connection is <strong>read-only</strong>: Savvy can see transaction and account data, and cannot move funds, initiate payments, or change anything at your institution.</p>
+                <h2>Text Messaging</h2>
+                <p>Texting with Savvy is optional and opt-in.</p>
                 <ul>
-                    <li>You authorize us to retrieve and process that data solely to operate the Service for you.</li>
-                    <li>You can disconnect an account at any time from within the app. See our <a href="privacy.html" style="color:var(--accent-dark);font-weight:600;">Privacy &amp; Trust</a> page for how data is handled, retained, and deleted.</li>
+                    <li><strong>Opt-in.</strong> You opt in by adding your mobile number in the app, agreeing to receive texts, and confirming the number from your own device — by sending a text such as "START" to Savvy's number, or by entering a one-time code. Savvy only sends texts to numbers confirmed this way.</li>
+                    <li><strong>What we send.</strong> Recurring benefit reminders, account notifications, and replies to questions you text us. Message frequency varies. Consent to receive texts is not a condition of using Savvy or of any purchase.</li>
+                    <li><strong>Rates.</strong> Message and data rates may apply, charged by your carrier. Carriers are not liable for delayed or undelivered messages.</li>
+                    <li><strong>Opt-out.</strong> Reply STOP at any time to stop receiving texts; reply HELP for help. You can also turn texting off in Settings.</li>
+                    <li><strong>Your number.</strong> Only link a phone number you own. If you give up a number, unlink it — otherwise messages meant for you may reach the number's next holder.</li>
                 </ul>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="sms">
+
+            <div class="section" id="email-forwarding">
                 <div class="section-number">06</div>
-                <h2>SMS &amp; Text Messaging</h2>
-                <p>Savvy offers an optional text-message program for account notifications and benefit reminders. Participation is entirely voluntary and is never a condition of using Savvy.</p>
+                <h2>Email Forwarding</h2>
+                <p>Savvy gives you a personal forwarding address (yourname-xxxxx@withsavvy.ai). Email sent to it is processed to extract the things Savvy tracks for you — receipts, order confirmations, tracking numbers, gift cards, trials.</p>
                 <ul>
-                    <li><strong>Opt-in.</strong> You opt in inside the app by entering your own mobile number and actively ticking a consent checkbox that is unchecked by default. Before we send anything, you must also confirm possession of the number from that device &mdash; by texting START or VERIFY to our number, or by entering a one-time code we send you.</li>
-                    <li><strong>Message frequency</strong> varies, typically around weekly.</li>
-                    <li><strong>Message and data rates may apply</strong> according to your carrier plan.</li>
-                    <li><strong>Opt-out.</strong> Reply <strong>STOP</strong> to any message to cancel, or switch the setting off in the app. Reply <strong>HELP</strong> for assistance.</li>
-                    <li><strong>Your opt-in data is never sold or shared.</strong> Your mobile number and SMS consent are never sold, shared, or disclosed to third parties for marketing or promotional purposes.</li>
-                    <li>Carriers are not liable for delayed or undelivered messages.</li>
+                    <li><strong>Treat your address like a key.</strong> Anyone who emails it can add content to your Savvy account. Don't post it publicly; contact support if you need it replaced.</li>
+                    <li><strong>Only forward what you may share.</strong> Forward only email you have the right to share with us — your own receipts and confirmations, not other people's private correspondence.</li>
+                    <li><strong>Automated processing.</strong> Forwarded content is processed automatically (including by AI, as described in the <a href="privacy.html" style="color:var(--accent-dark);font-weight:600;">Privacy Policy</a>) to do the job you sent it for.</li>
                 </ul>
-                <p>The full opt-in flow, including the exact consent language shown on screen, is published at <a href="sms-consent.html" style="color:var(--accent-dark);font-weight:600;">withsavvy.ai/sms-consent</a>.</p>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="acceptable-use">
+
+            <div class="section" id="connected-accounts">
                 <div class="section-number">07</div>
-                <h2>Acceptable Use</h2>
-                <p>When using Savvy, you agree not to:</p>
-                <ul>
-                    <li>Access accounts or data that are not yours, or provide credentials you are not authorized to use.</li>
-                    <li>Scrape, reverse-engineer, decompile, or attempt to extract our benefit catalog or source code.</li>
-                    <li>Interfere with, overload, or attempt to gain unauthorized access to the Service or its infrastructure.</li>
-                    <li>Use the Service to break the law, infringe someone else's rights, or transmit malware.</li>
-                    <li>Resell, sublicense, or commercially exploit the Service without our written permission.</li>
-                </ul>
+                <h2>Connected Accounts</h2>
+                <p>If you connect a bank or card account, the connection is made through Plaid with read-only access, used to match transactions to your benefits. You authorize Savvy to receive that data on your behalf. You can disconnect at any time in Settings; see the <a href="privacy.html#plaid" style="color:var(--accent-dark);font-weight:600;">Privacy Policy</a> for details.</p>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="intellectual-property">
+
+            <div class="section" id="acceptable-use">
                 <div class="section-number">08</div>
-                <h2>Intellectual Property</h2>
-                <p>The Service, including its software, benefit catalog, design, and the Savvy name and marks, belongs to us and is protected by intellectual property law. We grant you a limited, revocable, non-exclusive, non-transferable license to use the Service for your own personal, non-commercial purposes.</p>
-                <p>Card issuer names and trademarks referenced in the Service belong to their respective owners and are used only to identify benefits.</p>
+                <h2>Acceptable Use</h2>
+                <p>Don't abuse the service. In particular, you agree not to:</p>
+                <ul>
+                    <li>Use Savvy for anything unlawful, or to infringe anyone's rights.</li>
+                    <li>Link a phone number, email account, or financial account that isn't yours, or impersonate anyone.</li>
+                    <li>Probe, scrape, overload, or disrupt the service, or attempt to access other users' data.</li>
+                    <li>Reverse engineer, resell, or white-label Savvy without our written permission.</li>
+                    <li>Send content designed to manipulate or attack Savvy's automated processing.</li>
+                </ul>
+                <p>We may suspend or terminate accounts that violate these rules.</p>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="third-party">
+
+            <div class="section" id="accuracy">
                 <div class="section-number">09</div>
-                <h2>Third-Party Services</h2>
-                <p>Savvy depends on third-party providers, including Plaid for account connectivity and other vendors for hosting, messaging, and analytics. Your use of those services may be governed by their own terms. We are not responsible for the acts, omissions, or availability of third parties.</p>
+                <h2>Benefit Data &amp; Accuracy</h2>
+                <p>Savvy's benefit catalog is built from issuer-published sources and maintained with care — every benefit entry is traceable to a source. But issuers change their terms, and our data can lag or contain errors.</p>
+                <div class="callout warning">
+                    <div class="callout-icon">⚠️</div>
+                    <div class="callout-text"><strong>Verify before you rely.</strong> Benefit amounts, dates, and conditions shown in Savvy are informational. Confirm details with your issuer before making decisions that depend on them. Savvy does not guarantee any particular savings, redemption, or outcome.</div>
+                </div>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="disclaimers">
+
+            <div class="section" id="ip">
                 <div class="section-number">10</div>
-                <h2>Disclaimers</h2>
-                <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.</p>
-                <p>We do not warrant that the Service will be uninterrupted, timely, secure, or error-free, or that benefit information will be complete or current. You are responsible for verifying benefits with your issuer before acting on them.</p>
+                <h2>Intellectual Property</h2>
+                <p>Savvy — the software, design, catalog structure, and content we create — belongs to Savvy and its licensors. We grant you a personal, non-exclusive, non-transferable license to use it while these Terms apply. Content you send us (forwarded email, texts) remains yours; you grant us the license needed to process it for you as described in the Privacy Policy.</p>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="liability">
+
+            <div class="section" id="disclaimers">
                 <div class="section-number">11</div>
-                <h2>Limitation of Liability</h2>
-                <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, SAVVY WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, DATA, OR EXPIRED BENEFITS, ARISING OUT OF OR RELATING TO YOUR USE OF THE SERVICE.</p>
-                <p>Our total liability for any claim relating to the Service will not exceed the greater of the amount you paid us in the twelve months before the claim, or one hundred U.S. dollars.</p>
+                <h2>Disclaimers &amp; Limitation of Liability</h2>
+                <p>Savvy is provided <strong>"as is" and "as available."</strong> To the fullest extent permitted by law, we disclaim all warranties, express or implied, including merchantability, fitness for a particular purpose, and non-infringement. We do not warrant that the service will be uninterrupted, error-free, or that benefit data is complete or current.</p>
+                <p>To the fullest extent permitted by law, Savvy's total liability for any claims arising out of or relating to the service is limited to the greater of the amount you paid us in the twelve months before the claim or $50. We are not liable for indirect, incidental, special, consequential, or punitive damages, or for lost profits, missed benefits, expired credits, or issuer decisions.</p>
                 <p>Some jurisdictions do not allow certain limitations, so parts of this section may not apply to you.</p>
             </div>
 
             <div class="section-divider"></div>
+
             <div class="section" id="termination">
                 <div class="section-number">12</div>
                 <h2>Termination</h2>
-                <p>You may stop using Savvy and delete your account at any time from within the app. We may suspend or terminate your access if you breach these Terms, if required by law, or if we discontinue the Service. Sections that by their nature should survive termination &mdash; including intellectual property, disclaimers, and limitation of liability &mdash; will survive.</p>
+                <p>You can stop using Savvy and delete your account at any time in Settings. We may suspend or terminate your access if you materially breach these Terms, if required by law, or if we discontinue the service (with reasonable notice where practicable). Sections that by their nature should survive termination — including Disclaimers &amp; Liability, Intellectual Property, and Governing Law — survive.</p>
             </div>
 
             <div class="section-divider"></div>
-            <div class="section" id="changes">
-                <div class="section-number">13</div>
-                <h2>Changes to These Terms</h2>
-                <p>We may update these Terms as the Service evolves. When we make material changes we will update the "Last updated" date on this page and, where appropriate, notify you in the app. Continuing to use Savvy after a change means you accept the revised Terms.</p>
-            </div>
 
-            <div class="section-divider"></div>
             <div class="section" id="governing-law">
-                <div class="section-number">14</div>
+                <div class="section-number">13</div>
                 <h2>Governing Law</h2>
-                <p>These Terms are governed by the laws of the State of California, without regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal courts located in San Francisco County, California, and you consent to their jurisdiction.</p>
+                <p>These Terms are governed by the laws of the State of California, without regard to conflict-of-law rules. Disputes will be resolved in the state or federal courts located in California, and you and Savvy consent to their jurisdiction.</p>
             </div>
 
             <div class="section-divider"></div>
+
+            <div class="section" id="changes">
+                <div class="section-number">14</div>
+                <h2>Changes to These Terms</h2>
+                <p>We may update these Terms as Savvy evolves. If a change is material, we will notify you — in the app or by email — before it takes effect. The "Last updated" date above always reflects the current version. Continuing to use Savvy after a change takes effect means you accept the updated Terms.</p>
+            </div>
+
+            <div class="section-divider"></div>
+
             <div class="section" id="contact">
                 <div class="section-number">15</div>
                 <h2>Contact Us</h2>
                 <p>Questions about these Terms:</p>
                 <ul>
-                    <li><strong>Email:</strong> <a href="mailto:support@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">support@withsavvy.ai</a></li>
-                    <li><strong>Security issues:</strong> <a href="mailto:security@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">security@withsavvy.ai</a></li>
+                    <li><strong>Email:</strong> support@withsavvy.ai</li>
+                    <li><strong>Security issues:</strong> security@withsavvy.ai</li>
                 </ul>
-                <p>We respond to all inquiries within 5 business days.</p>
             </div>
-
-            <div class="section-divider"></div>
 
         </main>
     </div>
 
     <footer>
         <div class="footer-logo">Savvy</div>
-        <p class="footer-text">&copy; 2026 Savvy &middot; Operated by Sabera Daqiq, a sole proprietorship doing business as Savvy</p>
+        <p class="footer-text">© 2025 Savvy</p>
         <div class="footer-links">
             <a href="privacy.html">Privacy &amp; Trust</a>
             <a href="terms.html">Terms of Service</a>
@@ -670,17 +608,20 @@
     </footer>
 
     <script>
+        // Highlight active TOC item on scroll
         const sections = document.querySelectorAll('.section[id]');
         const tocLinks = document.querySelectorAll('.toc-list a');
+
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     tocLinks.forEach(link => link.classList.remove('active'));
-                    const active = document.querySelector('.toc-list a[href="#' + entry.target.id + '"]');
+                    const active = document.querySelector(`.toc-list a[href="#${entry.target.id}"]`);
                     if (active) active.classList.add('active');
                 }
             });
         }, { rootMargin: '-20% 0px -70% 0px' });
+
         sections.forEach(s => observer.observe(s));
     </script>
 </body>
