@@ -791,7 +791,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Requesting...';
             try {
-                const response = await fetch(`${SAVVY_API_BASE}/api/signup`, {
+                const response = await fetch(`${SAVVY_API_BASE}/api/waitlist/signup`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, phone }),

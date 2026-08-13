@@ -934,7 +934,7 @@
         // API origin (canonical domain vs. localhost) is resolved by js/savvy-api-config.js.
         // ============================================
         const SAVVY_APP_URL = 'https://app.withsavvy.ai/#sign-up';
-        const SAVVY_SIGNUP_API = `${window.SAVVY_API_ORIGIN}/api/signup`;
+        const SAVVY_SIGNUP_API = `${window.SAVVY_API_ORIGIN}/api/waitlist/signup`;
 
         document.querySelectorAll('.js-app-cta[data-app-url]').forEach(function (el) {
             el.href = SAVVY_APP_URL;
