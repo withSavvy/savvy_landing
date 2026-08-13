@@ -6,24 +6,91 @@ on:
 
 jobs:
   arm-or-hold:
-    runs-on: ${{ vars.CI_RUNNER }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: write
       pull-requests: write
     steps:
+      # Base-ref checkout only (never the PR head). This job needs
+      # .github/scripts/gh_retry.sh on disk, but under pull_request_target it
+      # must never execute a PR-tampered copy of anything under this
+      # workflow's elevated token. Same pattern already used by
+      # savvy-workspace's and savvy-email-worker's auto-arm-merge.yml.
+      - name: Checkout base ref (trusted) — NOT the PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
       - name: Check for hold conditions and arm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          LABELS=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH")
-          if echo "$LABELS" | grep -E -i '^(do-not-merge|reviewing|needs-human-review)$' >/dev/null; then
-            echo "PR carries a hold label — disarming any existing auto-merge and holding."
+          # `set -uo pipefail`, deliberately WITHOUT -e (GitHub Actions' default
+          # is `bash -e`). Every call that must not fail silently is checked
+          # explicitly below instead. A blanket -e would also abort on the
+          # intentionally-swallowed `--disable-auto` failure and wedge arming
+          # entirely — the same reasoning as the sibling repos' extracted
+          # auto_arm_merge.sh.
+          set -uo pipefail
+
+          RETRY=".github/scripts/gh_retry.sh"
+
+          HOLDS=""
+          # Hold labels are read LIVE, never from $GITHUB_EVENT_PATH.
+          #
+          # THE BUG THIS FIXES (savvy-backend PR #575 / incident 2026-07-16,
+          # never ported here): the payload is frozen at trigger time, but this
+          # step runs seconds later (token/setup cost, then this job's own API
+          # round-trips). A hold label applied inside that window is invisible
+          # to a payload read.
+          #
+          # savvy-backend PR #573: opened 03:01:29 -> `do-not-merge` applied
+          # 03:01:31 -> the arm run read its stale `opened` payload (no labels)
+          # -> armed 03:01:38 -> merged 03:01:40, nine seconds after the hold
+          # had already landed. The `labeled`-triggered run correctly decided to
+          # disarm and reported it at 03:01:41 — 1.5s after the merge had gone
+          # through. A payload read can never win that race.
+          #
+          # `hold` is in the pattern to match merge-guard.yml, which blocks on
+          # it as an absolute hold. Two workflows in one repo disagreeing about
+          # what "held" means is how a PR ends up looking parked while being
+          # freely mergeable.
+          read_live_holds() {
+            local raw
+            if raw=$("$RETRY" --retries 2 --sleep 2 -- \
+                       gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+                       --json labels -q '.labels[].name'); then
+              HOLDS=$(printf '%s\n' "$raw" \
+                        | grep -E -i '^(do-not-merge|reviewing|hold|needs-human-review)$' || true)
+              return 0
+            fi
+            echo "::error::Could not read live PR labels after retries — refusing to arm (fail-closed)."
+            exit 1
+          }
+
+          disarm() {
             gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --disable-auto 2>/dev/null || true
+          }
+
+          read_live_holds
+          if [ -n "$HOLDS" ]; then
+            echo "PR carries a hold label — disarming any existing auto-merge and holding."
+            disarm
             exit 0
           fi
-          
-          FILES=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json files -q '.files[].path')
+
+          # Explicit exit-status check: a failed fetch must refuse to arm, not
+          # silently continue with an empty FILES list and skip the brick-risk
+          # check entirely (fail-OPEN).
+          if ! FILES=$("$RETRY" --retries 2 --sleep 2 -- \
+                         gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+                         --json files -q '.files[].path'); then
+            echo "::error::Could not read live PR file list after retries — refusing to arm (fail-closed)."
+            exit 1
+          fi
+
           BRICK_RISK=false
           while IFS= read -r file; do
             if [[ -z "$file" ]]; then continue; fi
@@ -34,7 +101,7 @@ jobs:
                [[ "$file" =~ /supabase/migrations/ ]] || \
                [[ "$file" =~ writeExtractedBenefits ]] || \
                [[ "$file" =~ credit-fabrication-guard ]] || \
-               [[ "$file" =~ card\[-_\]benefits ]] || \
+               [[ "$file" =~ card[-_]benefits ]] || \
                [[ "$file" =~ ^\.github/workflows/ ]] || \
                [[ "$file" =~ ^\.github/scripts/ ]] || \
                [[ "$file" =~ ^\.github/CODEOWNERS$ ]] || \
@@ -45,12 +112,44 @@ jobs:
               break
             fi
           done <<< "$FILES"
-          
+
           if [ "$BRICK_RISK" = true ]; then
             echo "Applying do-not-merge label due to brick-risk path."
-            gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "do-not-merge"
+            # Retried and checked. This write is the whole point of the
+            # brick-risk branch — `do-not-merge` is exactly what merge-guard.yml
+            # blocks on, so a dropped write leaves a brick-risk PR looking
+            # unheld to every downstream gate. It failed for real on
+            # savvy-frontend#215 (2026-08-13) with a bare 502 Bad Gateway.
+            if ! "$RETRY" --retries 2 --sleep 2 -- \
+                 gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "do-not-merge"; then
+              echo "::error::Failed to apply do-not-merge after detecting brick risk (after retries). This run will NOT arm, but the safety label is missing — apply it by hand."
+              exit 1
+            fi
             exit 0
           fi
-          
+
+          # Last-moment live re-check. The FILES fetch above cost an API
+          # round-trip, so the label state read at the top is already seconds
+          # old. Re-read as late as possible, immediately before the
+          # irreversible call — this is the second read from PR #575's fix.
+          #
+          # HONEST LIMITATION: this narrows the TOCTOU window, it cannot close
+          # it. A label applied between this check and the merge call still
+          # loses. The real close is merge-guard.yml, a REQUIRED status check
+          # that GitHub re-evaluates on ITS side of the race.
+          read_live_holds
+          if [ -n "$HOLDS" ]; then
+            echo "Hold label applied while this run was evaluating — not arming."
+            disarm
+            exit 0
+          fi
+
           echo "No hold labels or brick risks found. Arming auto-merge (squash)."
-          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --squash
+          # Checked, so a failed arm shows up red instead of exiting 0 having
+          # only ATTEMPTED to arm. Deliberately NOT retried: re-issuing a merge
+          # call that may already have taken effect is the one place where a
+          # retry is riskier than a red job.
+          if ! gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --squash; then
+            echo "::error::gh pr merge --auto --squash failed — auto-merge was NOT armed. Investigate manually."
+            exit 1
+          fi
