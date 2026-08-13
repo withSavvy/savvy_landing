@@ -480,14 +480,16 @@
             background: var(--accent-light);
             border-radius: var(--radius-sm);
         }
-        .optin-box {
-            flex: 0 0 auto;
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--accent);
-            border-radius: 5px;
-            background: var(--bg-white);
-            margin-top: 2px;
+        .optin-cta {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 11px 18px;
+            border-radius: var(--radius-sm);
+            background: var(--accent);
+            color: var(--bg-white);
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
         }
         .optin-consent-text {
             font-size: 0.94rem;
@@ -572,7 +574,7 @@
     <div class="notice-band">
         <p>
             <span class="notice-kicker">Opt-in is active, never assumed</span>
-            <strong>The consent checkbox is unchecked by default, and we verify the number from the device before sending anything.</strong>
+            <strong>Nothing is pre-selected &mdash; consent is a deliberate tap on a button labelled &ldquo;Turn On Texts&rdquo;, and we confirm the number belongs to you before sending anything.</strong>
         </p>
     </div>
 
@@ -615,12 +617,14 @@
                 <div class="section-number">02</div>
                 <h2>How You Opt In</h2>
                 <p>Consent is collected in one place only: the <strong>Notification Settings</strong> screen inside the authenticated Savvy web app at withsavvy.ai. It is never collected over the phone, in person, on paper, or from any purchased or third-party list. We never text a number we obtained from anywhere other than its own owner, inside their signed-in account.</p>
+                <p>Consent is given by <strong>tapping a button labelled &ldquo;Turn On Texts&rdquo;</strong>, with the full disclosure shown directly above that button. The tap is the affirmative act &mdash; there is no checkbox anywhere in the flow, so there is nothing that could be pre-selected, and nothing can be submitted on your behalf. Texts stay off until you tap it.</p>
+                <p>Which steps you see depends on whether your mobile number was already verified when you created your account:</p>
                 <ul>
                     <li><strong>Step 1.</strong> You create a Savvy account and sign in.</li>
-                    <li><strong>Step 2.</strong> You open Notification Settings and type your own mobile number.</li>
-                    <li><strong>Step 3.</strong> You actively tick a consent checkbox that is <strong>unchecked by default</strong>. Nothing is pre-selected, and the form cannot be submitted on your behalf.</li>
+                    <li><strong>Step 2.</strong> You open Notification Settings.</li>
+                    <li><strong>Step 3a.</strong> <em>If your number was already verified at sign-up:</em> that number is shown to you, the disclosure appears beneath it, and you tap <strong>Turn On Texts</strong>. Possession was already proven when the number was verified, so no further step is needed.</li>
+                    <li><strong>Step 3b.</strong> <em>If it was not:</em> you type your own mobile number, the disclosure appears above the button, and you tap <strong>Turn On Texts</strong>. You then confirm possession from the device itself before any message is sent &mdash; see below.</li>
                     <li><strong>Step 4.</strong> Your consent is stored against your account with a timestamp.</li>
-                    <li><strong>Step 5.</strong> You confirm possession of the number from the device itself before any message is sent &mdash; see below.</li>
                 </ul>
             </div>
 
@@ -628,25 +632,25 @@
             <div class="section" id="language">
                 <div class="section-number">03</div>
                 <h2>The Exact Consent Language</h2>
-                <p>This is the checkbox as it appears on screen, reproduced verbatim:</p>
+                <p>This is the disclosure and the button as they appear on screen, reproduced verbatim. The disclosure always renders directly above the button it refers to, so the terms are visible before the tap that accepts them:</p>
                 <div class="optin-mock">
                     <div class="optin-mock-label">Notification settings &middot; Savvy app</div>
-                    <label class="optin-field-label" for="mock-phone">Mobile number</label>
-                    <div class="optin-input" id="mock-phone" role="presentation">(555) 012-3456</div>
+                    <div class="optin-field-label">Mobile number</div>
+                    <div class="optin-input" role="presentation">(555) 012-3456</div>
                     <div class="optin-consent-row">
-                        <div class="optin-box" aria-hidden="true"></div>
-                        <div class="optin-consent-text">I agree to receive account and benefit-reminder text messages from Savvy at the number provided. Consent is not a condition of purchase. Message frequency varies (about weekly). Msg &amp; data rates may apply. Reply STOP to unsubscribe, HELP for help. See our Privacy Policy at withsavvy.ai/privacy</div>
+                        <div class="optin-consent-text">By tapping Turn On Texts you agree to receive account &amp; benefit-reminder texts from Savvy at this number. Consent isn&rsquo;t a condition of use. Msg frequency varies; Msg &amp; data rates may apply. Reply STOP to cancel, HELP for help. See our Privacy Policy and Terms.</div>
                     </div>
-                    <p class="optin-note">The checkbox is unchecked by default. Consent is not required to create or use a Savvy account.</p>
+                    <div class="optin-cta" role="presentation">Turn On Texts</div>
+                    <p class="optin-note">There is no checkbox in this flow &mdash; the tap itself is the consent, and texts stay off until it happens. Consent is not required to create or use a Savvy account.</p>
                 </div>
-                <p>If the wording on this page and the wording in the app ever differ, the app is corrected to match this page.</p>
+                <p>This wording is generated from a single constant in the Savvy application source (<code>SMS_CONSENT_COPY</code>), which is what the user is actually shown. If the wording on this page and the wording in the app ever differ, the app is authoritative and this page is corrected to match it.</p>
             </div>
 
             <div class="section-divider"></div>
             <div class="section" id="possession">
                 <div class="section-number">04</div>
                 <h2>Proving the Number Is Yours</h2>
-                <p>Ticking the box is not enough on its own. Before Savvy sends a single message, you must prove the number belongs to the device in your hand, by either:</p>
+                <p>Tapping the button is not enough on its own. Before Savvy sends a single message, the number must be proven to belong to you. If it was already verified when you created your account, that proof is what makes the one-tap path available. Otherwise you prove it from the device in your hand, by either:</p>
                 <ul>
                     <li>texting <strong>START</strong> or <strong>VERIFY</strong> to the Savvy number from that device, or</li>
                     <li>entering a one-time code that we send to that number.</li>
