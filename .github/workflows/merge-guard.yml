@@ -6,16 +6,99 @@ on:
 
 jobs:
   merge-guard:
+    # Label-only check (no secrets, no VM) — pinned to GitHub-hosted so it
+    # never queues behind the scarce self-hosted runner. Matches gate tier-0.
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      pull-requests: read
     steps:
       - name: Check for hold labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # Read labels directly from the GitHub context payload
-          LABELS=$(jq '.pull_request.labels[].name' "$GITHUB_EVENT_PATH")
+          set -uo pipefail
 
-          # Check if 'do-not-merge' or 'reviewing' labels are present
-          if echo "$LABELS" | grep -E -i '"(do-not-merge|reviewing|needs-human-review)"'; then
-            echo "::error::PR is on hold due to 'do-not-merge' or 'reviewing' label."
+          # Labels are read LIVE via the API, never from $GITHUB_EVENT_PATH
+          # (a payload snapshot frozen at whatever moment triggered this
+          # run). A stale-payload read means a re-run of this job replays
+          # the OLD label state — `gh run rerun` looks like a fresh check
+          # but isn't one; only a genuinely new labeled/unlabeled/
+          # synchronize event (see `on.pull_request.types` above)
+          # re-evaluates correctly. Fail-closed: an unreadable label list
+          # blocks the merge rather than reading as "no holds".
+          LABELS=""
+          read_live_labels() {
+            local raw
+            if raw=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.labels[].name' 2>&1); then
+              LABELS="$raw"
+              return 0
+            fi
+            echo "::error::Could not read live PR labels — refusing to clear (fail-closed): $raw"
+            exit 1
+          }
+          read_live_labels
+
+          has() { printf '%s\n' "$LABELS" | grep -qxiE "$1"; }
+
+          # `do-not-merge` is absolute and deliberately NOT overridable. It is
+          # the label used to park something dangerous; if `human-approved`
+          # could override it the two would cancel out and the stronger signal
+          # would lose. Removing `do-not-merge` IS the override.
+          # `hold` is included here after a live near-miss on #728: the gate's
+          # own "Clear stale needs-human-review / gate-infra-error labels on
+          # clean pass" step removed the `needs-human-review` that was holding
+          # it (correctly — Opus had returned PASS), leaving only `hold`. This
+          # check did not block on `hold`, every other check was green, and the
+          # only red was a STALE merge-guard run evaluated against a label that
+          # no longer existed. One re-trigger would have made a Tier-B billing
+          # change mergeable with nobody having approved it — the same shape as
+          # #701, which auto-merged past its own stated hold hours earlier.
+          #
+          # `hold` reads like a hold, is used like one, and workflow-pr-admin-
+          # merge.yml already treats it as one (^(do-not-merge|reviewing|hold|
+          # needs-human-review)$). Only this check disagreed. Two workflows in
+          # one repo disagreeing about what "held" means is how a PR ends up
+          # looking parked while being freely mergeable by the gate that
+          # actually decides.
+          #
+          # Grouped with `do-not-merge` rather than with the advisory holds:
+          # both are applied deliberately to park something, so neither should
+          # be overridable by `human-approved` — removing the label is the
+          # override.
+          if has 'do-not-merge|hold'; then
+            echo "::error::PR carries 'do-not-merge' or 'hold' — absolute hold. Remove that label to merge; 'human-approved' does not override it."
+            exit 1
+          fi
+
+          # Why an override exists at all
+          # -----------------------------
+          # gate.yml applies `needs-human-review` for TWO different situations
+          # that are indistinguishable from here: a human genuinely needs to
+          # judge the change, or THE REVIEWER COULD NOT RUN (429 usage cap, 401
+          # on REVIEWER_SUB_OAUTH_TOKEN, crash, incomplete review). gate.yml's
+          # own logs call the second case "not a permanent block". It was one:
+          # the only thing that clears the label is gate.yml's "Clear stale
+          # needs-human-review / gate-infra-error labels on clean pass" step,
+          # which is gated on the reviewer returning PASS. A reviewer that
+          # cannot run never returns PASS, so the label never clears — and
+          # every re-run re-applies it, so removing it by hand loses to the
+          # next run. During a quota outage that is a wall, not a hold.
+          #
+          # Blocking an UNREVIEWED PR is correct and is kept. What was missing
+          # is a way for a human to say "I reviewed this myself" and have it
+          # stick. gate.yml never adds or removes `human-approved`, so unlike
+          # removing `needs-human-review` by hand, no re-run can undo it.
+          if has 'human-approved'; then
+            echo "PR carries 'human-approved' — a human has reviewed this and cleared it."
+            echo "Advisory holds ('reviewing', 'needs-human-review') are ignored."
+            exit 0
+          fi
+
+          if has 'reviewing|needs-human-review'; then
+            echo "::error::PR is on hold ('reviewing' or 'needs-human-review')."
+            echo "If the gate applied this because its reviewer could not run (429 usage cap, 401 auth, crash), the label will NOT clear on its own until a review actually succeeds."
+            echo "To merge anyway after reviewing it yourself, add the 'human-approved' label."
             exit 1
           fi
 
