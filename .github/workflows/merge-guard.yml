@@ -6,9 +6,34 @@ on:
 
 jobs:
   merge-guard:
-    # Label-only check (no secrets, no VM) — pinned to GitHub-hosted so it
-    # never queues behind the scarce self-hosted runner. Matches gate tier-0.
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    # Label-only check: no secrets, no build, no VM-local state. It MUST NOT
+    # queue behind the scarce self-hosted pool. A merge-gating check that
+    # cannot get a runner wedges every PR in the repo with no way to unstick
+    # it: a queued run that was never assigned cannot be cancelled (a 202 is
+    # ignored), cannot be retired by concurrency, and does not die when its
+    # PR closes.
+    #
+    # This previously read `vars.CI_RUNNER || 'ubuntu-latest'` under a comment
+    # claiming it was "pinned to GitHub-hosted". That claim was FALSE, and the
+    # comment is why nobody noticed: `CI_RUNNER` IS the scarce self-hosted
+    # pool, and `||` short-circuits on the variable being SET, not on a runner
+    # being available. So wherever CI_RUNNER is set, this check routed to
+    # exactly the pool the comment said it avoided.
+    #
+    # Measured 2026-08-13 on savvy-frontend#177 (public legal pages): this
+    # check sat queued 18+ minutes and never started, while the identical
+    # check on savvy-backend — where CI_RUNNER happens to be unset —
+    # completed in 5 seconds. Every substantive gate on that PR was green; it
+    # took a break-glass merge to land, purely because the gate could not get
+    # a runner. The same pool outage swallowed four board-action dispatches
+    # the same hour.
+    #
+    # Now matches savvy-workspace's merge-guard, which reached this
+    # conclusion first and documents the trap in full. UNSET IS A NO-OP: with
+    # neither overflow variable set, this resolves to ubuntu-latest, which is
+    # always available.
+    runs-on: ${{ vars.CI_RUNNER_OVERFLOW || vars.CI_RUNNER_LIGHT || 'ubuntu-latest' }}
+    timeout-minutes: 10
     permissions:
       pull-requests: read
     steps:
