@@ -480,11 +480,11 @@
         <div class="hero-meta">
             <span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                Effective: January 1, 2025
+                Effective: June 12, 2026
             </span>
             <span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Last updated: June 12, 2026
+                Last updated: August 15, 2026
             </span>
             <span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -520,6 +520,7 @@
                 <li><a href="#retention">Data Retention</a></li>
                 <li><a href="#security">Security</a></li>
                 <li><a href="#your-rights">Your Rights</a></li>
+                <li><a href="#gdpr">EEA &amp; UK Users (GDPR)</a></li>
                 <li><a href="#children">Children's Privacy</a></li>
                 <li><a href="#changes">Changes to This Policy</a></li>
                 <li><a href="#contact">Contact Us</a></li>
@@ -566,6 +567,7 @@
                         <tr><td>OpenAI</td><td>AI that reads card catalogs and processes content you send — via API, not used to train models.</td></tr>
                         <tr><td>Cloudflare</td><td>Hosting and email routing.</td></tr>
                         <tr><td>Render</td><td>Backend hosting.</td></tr>
+                        <tr><td>Stripe</td><td>Subscription payments. Your full card number goes to Stripe, never to Savvy.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -644,6 +646,11 @@
                             <td>Support emails, feedback you submit</td>
                             <td>You provide it</td>
                         </tr>
+                        <tr>
+                            <td>Forwarded Email Content</td>
+                            <td>Receipts, offers, and benefit emails you choose to forward to your personal Savvy address, including their text content</td>
+                            <td>You forward them to us</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -695,6 +702,7 @@
                 <p>When you opt in to receive text messages from Savvy, you agree to receive recurring automated benefit reminders and account notifications.</p>
                 <ul>
                     <li><strong>Opt-in:</strong> You must explicitly opt in inside your signed-in account, on the Notification Settings screen. Consent is given by tapping a button labelled "Turn On Texts", with the full disclosure shown directly above it — there is no pre-selected checkbox anywhere in the flow, and texts stay off until you tap. If your mobile number was already verified when you created your account, that number is shown to you and the tap is all that is required. Otherwise you enter your own number and then confirm it from that device — either by sending a text (such as "START") to Savvy's number, or by entering a one-time code we send you. We only send texts to numbers confirmed one of these two ways.</li>
+                    <li><strong>Consent language:</strong> The disclosure shown directly above the "Turn On Texts" button reads: "By tapping Turn On Texts you agree to receive account &amp; benefit-reminder texts from Savvy at this number. Consent isn't a condition of use. Msg frequency varies; Msg &amp; data rates may apply. Reply STOP to cancel, HELP for help." Tapping that button is the affirmative consent act, not a checkbox. Numbers verified through Clerk at sign-up skip the confirmation-text step described above; all other numbers must confirm possession by sending START or VERIFY (or entering the one-time code) before any message is sent.</li>
                     <li><strong>Message Types:</strong> We send recurring benefit-reminder texts and account-related notifications.</li>
                     <li><strong>Privacy of Opt-in Data:</strong> Your mobile phone number, SMS consent, and text messaging opt-in data will <strong>never be sold, shared, or disclosed to third parties for marketing or promotional purposes.</strong></li>
                     <li><strong>Opt-out & Help:</strong> You can cancel the SMS service at any time by replying "STOP" to any text message from us. For assistance, reply "HELP". Message and data rates may apply.</li>
@@ -738,9 +746,9 @@
                 <p>We take security seriously. Measures we have in place include:</p>
                 <ul>
                     <li>All data encrypted at rest (AES-256) and in transit (TLS 1.2+)</li>
-                    <li>Multi-factor authentication required to access your account</li>
+                    <li>Multi-factor authentication available on every account</li>
                     <li>Role-based access controls — only authorized employees can access production systems</li>
-                    <li>Regular vulnerability scans across all infrastructure</li>
+                    <li>Automated dependency and code-security scanning on every change, plus secret-scanning across our repositories</li>
                     <li>Bank-level connectivity via Plaid (your banking credentials are never stored by Savvy)</li>
                 </ul>
                 <div class="callout warning">
@@ -788,8 +796,23 @@
 
             <div class="section-divider"></div>
 
-            <div class="section" id="children">
+            <div class="section" id="gdpr">
                 <div class="section-number">10</div>
+                <h2>EEA &amp; UK Users (GDPR)</h2>
+                <p>If you are located in the European Economic Area or the United Kingdom, the GDPR (and UK GDPR) gives you additional rights, and we process your personal data only where we have a legal basis to do so:</p>
+                <ul>
+                    <li><strong>Contract:</strong> most processing — mapping your benefits, matching transactions, sending the reminders you signed up for — is necessary to provide the service you asked us for.</li>
+                    <li><strong>Consent:</strong> connecting a bank account via Plaid, turning on text messages, and forwarding emails to Savvy each happen only after your explicit opt-in, which you can withdraw at any time.</li>
+                    <li><strong>Legitimate interests:</strong> securing the service, preventing abuse, and understanding aggregate usage — always balanced against your rights.</li>
+                </ul>
+                <p>In addition to the rights listed above, you may object to processing based on legitimate interests, request restriction of processing, and lodge a complaint with your local supervisory authority. Savvy is operated from the United States, and your data is stored and processed there; where data is transferred from the EEA or UK we rely on our processors' standard contractual clauses and equivalent safeguards.</p>
+                <p>To exercise any of these rights, email <a href="mailto:support@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">support@withsavvy.ai</a> — we respond to verified requests within 30 days.</p>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <div class="section" id="children">
+                <div class="section-number">11</div>
                 <h2>Children's Privacy</h2>
                 <p>Savvy is not directed to children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe we have inadvertently collected information from a child under 13, please contact us immediately at <a href="mailto:support@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">support@withsavvy.ai</a> and we will delete it promptly.</p>
             </div>
@@ -797,7 +820,7 @@
             <div class="section-divider"></div>
 
             <div class="section" id="changes">
-                <div class="section-number">11</div>
+                <div class="section-number">12</div>
                 <h2>Changes to This Policy</h2>
                 <p>We may update this Privacy Policy from time to time. When we make material changes, we will notify you by email (sent to the address associated with your account) and update the "Last updated" date at the top of this page at least 30 days before the changes take effect.</p>
                 <p>And the standing commitment from the top of this page applies here too: how we use your data changes on this page before it changes in the product.</p>
@@ -807,7 +830,7 @@
             <div class="section-divider"></div>
 
             <div class="section" id="contact">
-                <div class="section-number">12</div>
+                <div class="section-number">13</div>
                 <h2>Contact Us</h2>
                 <p>If you have questions, concerns, or requests related to this Privacy Policy or your personal data, please contact us:</p>
                 <ul>
