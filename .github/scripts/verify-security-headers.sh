@@ -171,10 +171,19 @@ done <<< "$origins"
 
 # The waitlist form posts to the backend via fetch(); losing that from
 # connect-src would break signups silently, so pin it explicitly.
-if printf '%s' "$CSP" | grep -qE "connect-src[^;]*savvy-backend"; then
-  note_ok "CSP connect-src covers the signup API"
+#
+# Pinned to the CANONICAL origin, not the Render hostname. js/savvy-api-config.js
+# is the single source of truth and is explicit about it: production traffic goes
+# to api.withsavvy.ai, "never the raw *.onrender.com hostname, which is not
+# guaranteed stable and bypasses whatever is layered in front of the canonical
+# domain (CDN, WAF, etc.)". Nothing under *.html or js/ on main references the
+# onrender host any more, so a check for "savvy-backend" would have passed while
+# the CSP allowed only an origin the site never calls — green, and signups
+# blocked. That is the exact silent break this assertion exists to catch.
+if printf '%s' "$CSP" | grep -qE "connect-src[^;]*api\.withsavvy\.ai"; then
+  note_ok "CSP connect-src covers the canonical signup API origin (api.withsavvy.ai)"
 else
-  note_fail "CSP connect-src does not cover the signup API — the waitlist form would break"
+  note_fail "CSP connect-src does not cover https://api.withsavvy.ai — the waitlist form and admin dashboard would break (see js/savvy-api-config.js for the canonical origin)"
 fi
 
 # Inline <style>/<script> are pervasive in this site; if the CSP ever drops
