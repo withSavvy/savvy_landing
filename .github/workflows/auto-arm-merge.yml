@@ -22,9 +22,47 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
+      # Arming with secrets.GITHUB_TOKEN silently disables production deploys.
+      #
+      # GitHub does not start new workflow runs from events attributed to the
+      # default GITHUB_TOKEN. So when this job armed auto-merge with it, the
+      # eventual squash-merge push to main was attributed to
+      # github-actions[bot] and deploy.yml's `on: push: branches: [main]`
+      # never fired. The deploy did not fail — it never ran, so nothing was
+      # red anywhere.
+      #
+      # Measured on this repo by cross-referencing each merged PR's merged_by
+      # against deploy.yml's run history:
+      #   #66      merged by a human           -> deploy ran
+      #   #74-#77  merged by github-actions[bot] -> NO deploy, 8-day gap
+      #   #78,#81,#82,#84 merged by a human     -> deploy ran within seconds
+      #   #69,#85  merged by github-actions[bot] -> NO deploy until a manual
+      #                                             workflow_dispatch a day+ later
+      # #85 was the waitlist-signup 401 fix: it merged 2026-08-13T23:22Z and
+      # did not reach the live site until a manual dispatch on 2026-08-15,
+      # so every signup kept failing for a day and a half AFTER the fix landed.
+      #
+      # Minting the savvy-gate-bot App token instead lifts the restriction —
+      # App-attributed events do trigger workflows. This reuses the App
+      # already wired into gate.yml and gate-credential-watchdog.yml rather
+      # than introducing a new credential.
+      # continue-on-error + fallback below: if the mint ever fails, arming must
+      # still happen. Falling back to secrets.GITHUB_TOKEN restores exactly
+      # today's behaviour (armed, but the merge won't trigger deploy) rather
+      # than wedging the merge lane entirely — a degraded deploy is recoverable
+      # by a manual dispatch, an unarmed PR queue is not. Same shape as
+      # savvy-backend's auto-arm-merge.yml.
+      - name: Mint app token (GITHUB_TOKEN-armed merges never trigger deploy)
+        id: app-token
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.GATE_APP_ID }}
+          private-key: ${{ secrets.GATE_APP_PRIVATE_KEY }}
+
       - name: Check for hold conditions and arm
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # `set -uo pipefail`, deliberately WITHOUT -e (GitHub Actions' default
