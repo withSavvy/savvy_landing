@@ -1,0 +1,29 @@
+# Cloudflare static-asset response headers (Workers assets / Pages `_headers` convention).
+#
+# Applied by Cloudflare to every published page. Wrangler reads this file off
+# disk as configuration and always excludes it from the uploaded assets, so it
+# is never served as a page and needs no entry in `.assetsignore` — see the
+# note there. .github/scripts/verify-security-headers.sh is the regression test
+# that keeps the CSP below in sync with what the HTML actually loads.
+#
+# CSP provenance — every origin below was derived from the published HTML
+# (index.html, index-1.html, index-2.html, index3.html, privacy.html):
+#   fonts.googleapis.com  -> the DM Sans / DM Serif Display stylesheet
+#   fonts.gstatic.com     -> the font files that stylesheet pulls in
+#   savvy-backend-*.onrender.com -> fetch() target of the waitlist form
+#                            (index-1.html, index3.html)
+#   data:                 -> the inline SVG favicon on every page
+# 'unsafe-inline' is required for both script and style because the site ships
+# every stylesheet and every script inline in the HTML (plus one inline
+# `onload=` handler on the font <link>). Nonces would need a build step; the
+# site has none. The CSP's value here is therefore framing/injection-surface
+# containment (frame-ancestors, base-uri, form-action, object-src), not XSS
+# defence-in-depth via script-src.
+
+/*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.withsavvy.ai; upgrade-insecure-requests

@@ -3,6 +3,10 @@
 # it's what makes this an allowlist instead of a denylist that re-leaks silently.
 *
 !*/
+# Do NOT add `!/_headers` here. Wrangler reads `_headers` straight off disk as
+# configuration (independently of this file), and separately hard-codes
+# `/_headers` as an always-ignored upload pattern. Un-ignoring it does not help
+# Cloudflare find it — it only publishes the config file itself at /_headers.
 !/index.html
 !/index-1.html
 !/index-2.html
