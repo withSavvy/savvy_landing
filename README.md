@@ -2,7 +2,7 @@
 
 **Marketing site for Savvy** — static landing page. Loosely connected to the main [Savvy](https://github.com/Sara3/savvy) app (credit card benefit tracker); this repo is **standalone** and has its **own GitHub repository**.
 
-- **Live site (GitHub Pages):** https://sara3.github.io/savvy_landing/
+- **Live site (Cloudflare Workers):** https://withsavvy.ai/
 - **Waitlist API (Render):** backend in this repo deploys to e.g. https://savvy-api-1kov.onrender.com (or your own Render service).
 
 ## What’s in this repo
@@ -28,18 +28,22 @@
 
 ## Deploy
 
-### GitHub Pages (static site)
+### Cloudflare Workers (static site)
 
-1. Push this repo to GitHub (e.g. `sara3/savvy_landing` or `savvy-landing`).
-2. **Settings → Pages:** Source = **Deploy from a branch**. Branch = **main** (or **master**), folder = **/ (root)**. Save.
-3. The site will be at `https://<username>.github.io/<repo-name>/` (e.g. `https://sara3.github.io/savvy_landing/`).
+Production (`https://withsavvy.ai/`) is served by Cloudflare Workers, not GitHub Pages. `wrangler.jsonc` defines two environments:
+
+- `staging` → `savvylanding-staging`
+- `production` → `savvylanding`
+
+The GitHub Actions workflow (`.github/workflows/deploy.yml`) deploys to production automatically on push to `main` (requires the `CLOUDFLARE_API_TOKEN` repo secret; the workflow can also be run manually via `workflow_dispatch`). To deploy manually:
+
+```bash
+npx wrangler@4 deploy --env production
+```
 
 ### Custom domain (e.g. Clark)
 
-To use a custom domain (e.g. Clark):
-
-1. In the GitHub repo: **Settings → Pages → Custom domain**, enter the domain and follow the instructions (CNAME / DNS).
-2. Ensure **Enforce HTTPS** is enabled after DNS propagates.
+The CNAME for `withsavvy.ai` is already configured in DNS. To point a different custom domain at this Worker, add it in the Cloudflare dashboard under **Workers & Pages → savvylanding → Settings → Domains & Routes**.
 
 ### Backend (waitlist API)
 
