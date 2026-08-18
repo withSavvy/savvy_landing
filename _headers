@@ -10,7 +10,7 @@
 # (index.html, index-1.html, index-2.html, index3.html, privacy.html):
 #   fonts.googleapis.com  -> the DM Sans / DM Serif Display stylesheet
 #   fonts.gstatic.com     -> the font files that stylesheet pulls in
-#   savvy-backend-*.onrender.com -> fetch() target of the waitlist form
+#   api.withsavvy.ai      -> fetch() target of the waitlist form
 #                            (index-1.html, index3.html)
 #   data:                 -> the inline SVG favicon on every page
 # 'unsafe-inline' is required for both script and style because the site ships
