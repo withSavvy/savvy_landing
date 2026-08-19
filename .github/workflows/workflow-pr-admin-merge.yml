@@ -1,0 +1,342 @@
+name: Workflow PR Admin Merge
+# [wo:workflow-pr-admin-merge]
+#
+# Self-healing break-glass for workflow-only PRs. When claude[bot] approves a PR
+# whose ONLY changed files live under .github/workflows/, temporarily disable
+# enforce_admins, admin-merge, then re-enable — replacing manual
+# break-glass.sh off → merge → on for every gate.yml touch.
+#
+# BRICK-RISK: ships via one manual break-glass merge; after that, future
+# workflow-only PRs self-heal on claude approval.
+#
+# Secrets: AUTOMATION_ADMIN_PAT (org/repo secret) — repo-admin scoped PAT with
+# permission to modify branch protection (enforce_admins). Least-privilege:
+# scoped to this repository only; never fall back to GITHUB_TOKEN or personal
+# tokens. First deploy of THIS file still requires manual break-glass.
+#
+# PORTED to savvy_landing on 2026-08-19 from savvy-workspace, which carries the
+# converged version: REST eligibility guards AND the fixed enforce_admins
+# re-arm with read-back. Both halves matter — see the header of the re-arm
+# step. Nothing here is repo-specific; every call is parameterised on
+# ${{ github.repository }}.
+
+on:
+  pull_request_review:
+    types: [submitted]
+  # Manual entry point. The review path only fires on a claude[bot] approval,
+  # which a human cannot produce — so before this existed, every workflow-only
+  # PR that Claude could not self-approve fell back to hand-run break-glass
+  # commands. That is precisely where protection gets left off: on 2026-08-05 a
+  # stray character corrupted the re-enable URL into a 404 and `main` sat with
+  # enforce_admins disabled until it was noticed. Dispatching here runs the
+  # SAME guarded path (workflow-only files, hold-label check, always-re-enable)
+  # instead of a human pasting three chained gh calls.
+  #
+  # This is not a weaker door: workflow_dispatch already requires repo write
+  # access, and every eligibility guard below applies identically.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to break-glass merge (workflow-only files)'
+        required: true
+        type: string
+
+# Repo-wide mutex: enforce_admins is a single repo-level switch — serialize
+# break-glass toggles so parallel approved workflow PRs cannot leave protection
+# disabled or merge the wrong PR.
+concurrency:
+  group: workflow-pr-admin-merge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  admin-merge:
+    name: break-glass merge (workflow-only)
+    # GitHub-hosted ON PURPOSE — do NOT move this back to vars.CI_RUNNER.
+    #
+    # This job has NO self-hosted dependency: no checkout, no node, no
+    # /var/lib/savvy-bank, no VM-only path. Every step is `gh` plus shell
+    # builtins, and `gh` ships preinstalled on ubuntu-latest. It was on the
+    # self-hosted pool only because that was the repo default when it was
+    # written.
+    #
+    # The reason it MUST NOT be: this is the break-glass. It is needed exactly
+    # when the merge lane is jammed, and on 2026-08-18 it was jammed by the
+    # self-hosted pool itself — so a break-glass queued on that same pool could
+    # not run. Two dispatches (19:32Z and 19:41Z) for PR #8828 never started at
+    # all: no skip comment, no eligibility evaluation, nothing. board-action
+    # dispatches were 13 deep spanning 17:46Z-18:53Z with none started, and the
+    # override Sara had explicitly authorised could not be executed for over an
+    # hour. A rescue mechanism that depends on the thing it rescues is not a
+    # rescue mechanism.
+    #
+    # Same precedent as #8538 / #8592 / #8807, which moved gate.yml's and
+    # board-action.yml's zero-VM-dependency jobs off CI_RUNNER for throughput.
+    # This one is not about throughput — it is about availability under exactly
+    # the failure it exists to handle.
+    #
+    # A LITERAL, not `${{ vars.CI_RUNNER_HOSTED || ... }}`: an indirection here
+    # is one variable flip away from putting the break-glass back on the
+    # contended pool, which is the whole defect. Hard-coding is the point.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.review.state == 'approved' &&
+      github.event.review.user.login == 'claude[bot]' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.draft == false &&
+      github.event.review.commit_id == github.event.pull_request.head.sha)
+    steps:
+      # Both entry points converge here so every downstream step reads one
+      # value. github.event.pull_request is absent on workflow_dispatch.
+      - name: Resolve PR number
+        id: pr
+        env:
+          DISPATCH_PR: ${{ inputs.pr_number }}
+          REVIEW_PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          NUM="${DISPATCH_PR:-$REVIEW_PR}"
+          if ! [[ "$NUM" =~ ^[0-9]+$ ]]; then
+            echo "::error::Could not resolve a numeric PR number (got '$NUM')."
+            exit 1
+          fi
+          echo "number=$NUM" >> "$GITHUB_OUTPUT"
+          echo "Resolved PR #$NUM (event: $GITHUB_EVENT_NAME)"
+
+      - name: Verify AUTOMATION_ADMIN_PAT (fail loudly, no fallback)
+        env:
+          AUTOMATION_ADMIN_PAT: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+        run: |
+          if [ -z "${AUTOMATION_ADMIN_PAT:-}" ]; then
+            echo "::error::AUTOMATION_ADMIN_PAT is unset. This workflow requires a dedicated repo-admin PAT to toggle enforce_admins and admin-merge. It will NOT fall back to GITHUB_TOKEN."
+            exit 1
+          fi
+          echo "AUTOMATION_ADMIN_PAT is present."
+
+      - name: Evaluate eligibility (files + labels)
+        id: eligibility
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+
+          # REST ONLY (`gh api`), never `gh pr view`/`gh pr comment`. Those are
+          # GraphQL-backed, and GitHub meters REST and GraphQL on SEPARATE
+          # per-user buckets. The org's automation runs as Sara's user and
+          # routinely drains the GraphQL bucket, so a GraphQL call here fails
+          # with "API rate limit already exceeded for user ID ..." — and this
+          # step fails CLOSED, which turns a rate limit into a phantom hold.
+          #
+          # Observed live 2026-08-19T11:51:17Z (run 32249634566, PR #8828):
+          #   ::error::Failed to fetch PR labels (gh pr view failed) — treating
+          #   as HELD (fail closed). Output: GraphQL: API rate limit already
+          #   exceeded for user ID 6343949.
+          # The PR carried no blocking label at all. The break-glass reported a
+          # hold that did not exist and refused to merge, and the reason was
+          # invisible from the PR — no skip comment is posted on this path.
+          #
+          # The merge step below already documented this exact hazard and used
+          # REST for that reason; the guard deciding WHETHER to merge did not.
+          # Protecting the action but not the gate protects nothing.
+          post_comment() {
+            gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" -f body="$1" >/dev/null
+          }
+
+          # Canonical hold-label set, exact match per label (anchored ^...$,
+          # case-insensitive) — e.g. "do-not-merge-maybe" must NOT match. This
+          # previously only checked (hold|needs-human-review), silently letting
+          # `do-not-merge` and `reviewing` PRs sail through the break-glass
+          # admin-merge path. [wo:fix-admin-merge-hold-label-regex-bypass]
+          #
+          # [wo:p0-hold-label-vocabulary-is-hand-copied-across-6-enforcement-poi]
+          # Matches .claude/hold-labels.json's canonical vocabulary MINUS
+          # awaiting-opus-verdict, per that file's documented
+          # "workflow-pr-admin-merge-arm-time-only" exception: awaiting-opus-verdict
+          # is an arm-time-only transient hold applied/cleared by
+          # auto_arm_merge.sh / post_opus_verdict_recorded.sh and doesn't apply
+          # to this break-glass admin-merge path. This job has no checkout step,
+          # so it hand-mirrors the canonical list rather than sourcing the
+          # loader; keep in sync manually (the drift-guard test
+          # .github/scripts/__tests__/hold_labels_drift_guard.test.sh checks it).
+          HOLD_LABEL_PATTERN='^(do-not-merge|reviewing|hold|needs-human-review)$'
+
+          # Fail CLOSED: if the label fetch errors (API failure, malformed
+          # JSON) treat the PR as held rather than falling through to eligible.
+          if ! LABELS=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.labels[].name' 2>&1); then
+            echo "::error::Failed to fetch PR labels (REST GET pulls/$PR_NUMBER failed) — treating as HELD (fail closed). Output: $LABELS"
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=label-fetch-failed" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if echo "$LABELS" | grep -E -i "$HOLD_LABEL_PATTERN" >/dev/null; then
+            post_comment "⏭️ **workflow-pr-admin-merge** skipped: PR carries a hold label (\`do-not-merge\`, \`reviewing\`, \`hold\`, or \`needs-human-review\`)."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=blocking-label" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          FILES=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
+          if [ -z "$FILES" ]; then
+            post_comment "⏭️ **workflow-pr-admin-merge** skipped: no changed files on PR."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=no-files" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if [[ ! "$file" =~ ^\.github/workflows/ ]]; then
+              post_comment "⏭️ **workflow-pr-admin-merge** skipped: non-workflow file \`$file\` present (guard requires ALL files under \`.github/workflows/**\`)."
+              echo "eligible=false" >> "$GITHUB_OUTPUT"
+              echo "skip_reason=non-workflow-file" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done <<< "$FILES"
+
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+          echo "All guards passed — eligible for break-glass admin merge."
+
+      # A draft PR returns 405 "Pull Request is still a draft" from the merge
+      # endpoint. Left unhandled that surfaces AFTER enforce_admins is already
+      # off, so the failure window is exactly the window where main is
+      # unprotected. Un-draft first, while protection is still on.
+      - name: Ready the PR for merge (un-draft if needed)
+        if: steps.eligibility.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          IS_DRAFT=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.draft')
+          if [ "$IS_DRAFT" = "true" ]; then
+            # THE ONE UNAVOIDABLE GraphQL CALL in this workflow. Undrafting
+            # exists ONLY in the GraphQL markPullRequestReadyForReview mutation:
+            # REST `PATCH /pulls/{n} -f draft=false` returns 200 with the
+            # unmodified object and leaves the PR a draft (verification-traps
+            # #30, cost a failed break-glass on 2026-08-06). Everything else in
+            # this job is REST precisely so a drained GraphQL bucket cannot stop
+            # a break-glass; this line can still fail on one.
+            #
+            # That is survivable HERE and nowhere else: it runs while
+            # enforce_admins is still ON, so a GraphQL failure aborts the job
+            # before protection is touched, and it is skipped entirely for the
+            # normal (non-draft) case. Do not move it below the disable step.
+            gh pr ready "$PR_NUMBER" --repo "$REPO"
+            echo "PR #$PR_NUMBER un-drafted before break-glass."
+          else
+            echo "PR #$PR_NUMBER already ready."
+          fi
+
+      - name: Disable enforce_admins (break-glass off)
+        id: disable-enforce-admins
+        if: steps.eligibility.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api -X DELETE "repos/$REPO/branches/main/protection/enforce_admins"
+          echo "enforce_admins disabled on $REPO"
+
+      # Merge via the REST endpoint, NOT `gh pr merge` (GraphQL). GitHub meters
+      # REST and GraphQL on SEPARATE per-user buckets; when the GraphQL bucket is
+      # exhausted (the recurring "API rate limit already exceeded for user ID" that
+      # stalls merges under load), `gh pr merge` fails but a REST PUT merge still
+      # lands. enforce_admins is already OFF above, so the admin PAT bypasses the
+      # required/failing checks exactly as `--admin` did. REST merge does not delete
+      # the head branch, so we delete it explicitly (same-repo branches only).
+      - name: Admin merge PR (REST — survives GraphQL rate-limit)
+        id: admin-merge
+        if: steps.eligibility.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          gh api rate_limit \
+            --jq '"rate_limit before merge: rest="+(.resources.core.remaining|tostring)+" graphql="+(.resources.graphql.remaining|tostring)' || true
+          PR_JSON="$(gh api "repos/$REPO/pulls/$PR_NUMBER")"
+          HEAD_REF="$(printf '%s' "$PR_JSON" | jq -r '.head.ref')"
+          HEAD_REPO="$(printf '%s' "$PR_JSON" | jq -r '.head.repo.full_name // ""')"
+          # REST merge uses the REST bucket; admin PAT + enforce_admins OFF bypasses checks.
+          gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/merge" -f merge_method=squash
+          echo "merged #$PR_NUMBER via REST endpoint"
+          # `gh pr merge --delete-branch` equivalent — REST merge leaves the branch.
+          if [ "$HEAD_REPO" = "$REPO" ] && [ -n "$HEAD_REF" ] && [ "$HEAD_REF" != "main" ]; then
+            gh api -X DELETE "repos/$REPO/git/refs/heads/$HEAD_REF" \
+              && echo "deleted branch $HEAD_REF" \
+              || echo "::warning::branch delete failed for $HEAD_REF (non-fatal; PR already merged)"
+          fi
+
+      # `--fail-with-body` is REMOVED here, not restyled. The gh build on
+      # ubuntu-latest rejects it outright:
+      #
+      #   unknown flag: --fail-with-body
+      #
+      # so gh exited 1 during ARGUMENT PARSING and the POST never went out.
+      # The call was never made — this is not an API error path.
+      #
+      # Measured twice on 2026-08-19, on both repos carrying this file:
+      #   savvy-frontend  run 32250609703 — protection OFF from 12:02:46Z
+      #   savvy-workspace run 32250824895 — protection OFF from 12:05:17Z (#8828)
+      # In each, the merge landed, this step "failed", and main was left
+      # UNPROTECTED — while the failure comment below asserted it had been
+      # re-armed. `git log -S` dates the flag to 2026-08-11, so every
+      # break-glass this workflow actually performed for eight days ended the
+      # same way. It is invisible to the morning brief because this workflow
+      # calls the protection API directly and writes no break-glass.sh lesson
+      # record, so the "still OFF" detector gets no input from it at all.
+      #
+      # `gh api` already exits non-zero on an HTTP error; the flag only changed
+      # how the response body printed.
+      #
+      # Then READ IT BACK. Every previous version of this step trusted its own
+      # exit code and none ever asked GitHub what the state actually is — which
+      # is exactly how a failed re-arm stays invisible.
+      - name: Re-enable enforce_admins (always after disable)
+        if: always() && steps.disable-enforce-admins.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          if ! OUT=$(gh api -X POST "repos/$REPO/branches/main/protection/enforce_admins" 2>&1); then
+            echo "::error::RE-ARM FAILED on $REPO — enforce_admins is STILL DISABLED and main is UNPROTECTED. Re-arm now with: gh api -X POST repos/$REPO/branches/main/protection/enforce_admins — API said: $OUT"
+            exit 1
+          fi
+          STATE=$(gh api "repos/$REPO/branches/main/protection/enforce_admins" --jq '.enabled' 2>&1) || STATE="unreadable"
+          if [ "$STATE" != "true" ]; then
+            echo "::error::RE-ARM UNVERIFIED on $REPO — enforce_admins reads back as '$STATE', not 'true'. Treat main as UNPROTECTED until confirmed."
+            exit 1
+          fi
+          echo "enforce_admins re-enabled on $REPO, and verified enabled by reading it back"
+
+      - name: Post success comment
+        if: steps.eligibility.outputs.eligible == 'true' && steps.admin-merge.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" \
+            -f body="✅ Auto-merged via workflow-pr-admin-merge (break-glass automated)" >/dev/null
+
+      - name: Post failure comment
+        if: failure() && steps.eligibility.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" \
+            -f body="❌ **workflow-pr-admin-merge** failed during break-glass merge. **Do not assume \`enforce_admins\` was re-armed.** This comment used to assert it had been, unconditionally — on 2026-08-19 it said so on two repos while their main sat unprotected. Check the re-enable step in the job log; if it did not print a verified re-arm, restore protection immediately with: \`gh api -X POST repos/$REPO/branches/main/protection/enforce_admins\`" >/dev/null

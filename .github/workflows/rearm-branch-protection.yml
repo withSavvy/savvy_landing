@@ -1,0 +1,99 @@
+name: Re-arm Branch Protection
+# [wo:rearm-branch-protection-standalone]
+#
+# A STANDALONE, dispatch-only re-arm for `enforce_admins` on main.
+#
+# WHY THIS EXISTS SEPARATELY FROM workflow-pr-admin-merge.yml
+#
+# Until #9017, that workflow's re-enable step called `gh api ... --silent
+# --fail-with-body`. `--fail-with-body` is a curl flag, not a `gh api` flag,
+# so gh exited 1 during ARGUMENT PARSING and the POST never went out. Every
+# break-glass it performed between 2026-08-11 and 2026-08-19 ended with main
+# UNPROTECTED, while the workflow's own failure comment asserted the opposite.
+#
+# #9017 fixed that path. But it only re-arms as part of a break-glass, which
+# first DISABLES protection and merges a PR. That makes it useless as a
+# recovery tool: to close an open protection gap you would have to open a new
+# one and land a merge you may not want. There was no way to simply turn
+# protection back on.
+#
+# This workflow is that missing tool. It NEVER disables anything and NEVER
+# merges anything — it only turns enforce_admins ON and then reads it back to
+# prove it. Safe to run at any time; if protection is already armed the POST
+# is idempotent.
+#
+# Secrets: AUTOMATION_ADMIN_PAT — the same repo-admin PAT
+# workflow-pr-admin-merge.yml uses. No fallback to GITHUB_TOKEN: a token that
+# cannot set protection must fail loudly, never appear to succeed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Protected branch to re-arm'
+        required: false
+        default: 'main'
+        type: string
+
+permissions:
+  contents: read
+
+# Serialize against the break-glass workflow: enforce_admins is a single
+# repo-level switch, and a re-arm racing a deliberate break-glass disable
+# would re-protect main mid-merge.
+concurrency:
+  group: workflow-pr-admin-merge
+  cancel-in-progress: false
+
+jobs:
+  rearm:
+    name: re-arm enforce_admins
+    # Hosted, NOT vars.CI_RUNNER. This is a recovery tool for a security gap;
+    # it must not be unschedulable because the self-hosted pool is saturated.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify AUTOMATION_ADMIN_PAT is present (no fallback)
+        env:
+          AUTOMATION_ADMIN_PAT: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+        run: |
+          if [ -z "${AUTOMATION_ADMIN_PAT:-}" ]; then
+            echo "::error::AUTOMATION_ADMIN_PAT is unset. This workflow will NOT fall back to GITHUB_TOKEN — a token that cannot set branch protection must fail loudly, not appear to succeed."
+            exit 1
+          fi
+
+      - name: Report protection state BEFORE
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          set -uo pipefail
+          BEFORE=$(gh api "repos/$REPO/branches/$BRANCH/protection/enforce_admins" --jq '.enabled' 2>&1) || BEFORE="unreadable"
+          echo "enforce_admins on $REPO@$BRANCH BEFORE re-arm: $BEFORE"
+          if [ "$BEFORE" != "true" ]; then
+            echo "::warning::$REPO@$BRANCH was NOT protected (enforce_admins=$BEFORE) — re-arming now."
+          fi
+
+      - name: Re-arm enforce_admins, then read it back
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_ADMIN_PAT }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          set -uo pipefail
+          # No --fail-with-body: that is a curl flag. gh rejects it during
+          # argument parsing, which is precisely how the POST silently never
+          # went out for eight days. gh api already exits non-zero on an HTTP
+          # error.
+          if ! OUT=$(gh api -X POST "repos/$REPO/branches/$BRANCH/protection/enforce_admins" 2>&1); then
+            echo "::error::RE-ARM FAILED on $REPO@$BRANCH — main is UNPROTECTED. API said: $OUT"
+            exit 1
+          fi
+          # Trusting our own exit code is what hid this bug. Ask GitHub.
+          STATE=$(gh api "repos/$REPO/branches/$BRANCH/protection/enforce_admins" --jq '.enabled' 2>&1) || STATE="unreadable"
+          if [ "$STATE" != "true" ]; then
+            echo "::error::RE-ARM UNVERIFIED on $REPO@$BRANCH — reads back as '$STATE', not 'true'. Treat $BRANCH as UNPROTECTED."
+            exit 1
+          fi
+          echo "enforce_admins is ON for $REPO@$BRANCH, verified by reading it back."
