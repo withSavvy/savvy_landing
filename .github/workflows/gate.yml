@@ -554,8 +554,37 @@ jobs:
           # [wo:gate-reviewer-infra-nonblocking-landing]
           case "$TOKEN" in
             PASS)        echo "Sonnet review ran and succeeded." ; exit 0 ;;
-            ROUTE_HUMAN) gh issue edit "$PR_NUMBER" --add-label needs-human-review \
-                           --repo "$GITHUB_REPOSITORY" || true
+            ROUTE_HUMAN)
+                         # The label IS the safety mechanism on this path.
+                         # This arm exits 0 by design so the check does not sit
+                         # permanently red (the reviewer never retroactively
+                         # "runs" on a stale PR). But that design rests ENTIRELY
+                         # on needs-human-review, which merge-guard.yml and
+                         # auto-arm-merge.yml are the only things blocking on.
+                         # Written with `|| true` and never read back, one
+                         # dropped write lets an UNREVIEWED PR merge green.
+                         #
+                         # Not hypothetical, and the fix already exists in THIS
+                         # repo: auto-arm-merge.yml retries-and-checks its own
+                         # label write precisely because the identical call
+                         # failed with a bare 502 on savvy-frontend#215
+                         # (2026-08-13). That pattern never reached here.
+                         if ! bash .github/scripts/gh_retry.sh --retries 2 --sleep 2 -- \
+                              gh issue edit "$PR_NUMBER" --add-label needs-human-review \
+                              --repo "$GITHUB_REPOSITORY"; then
+                           echo "::error::review: could not apply needs-human-review after retries. Exiting 0 here would leave an unreviewed PR with NO backstop. Failing loud instead."
+                           exit 1
+                         fi
+                         # Read it back over REST (separate rate-limit bucket,
+                         # and a write that reported success is not proof the
+                         # label is there). Captured, not piped — a pipeline
+                         # hides the exit code, a documented trap in this project.
+                         LABELS_NOW="$(bash .github/scripts/gh_retry.sh --retries 2 --sleep 2 -- \
+                           gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" --jq '.[].name' || true)"
+                         if ! printf '%s\n' "$LABELS_NOW" | grep -qx needs-human-review; then
+                           echo "::error::review: needs-human-review is NOT present after a write that reported success — the only backstop on this path is missing. Failing loud."
+                           exit 1
+                         fi
                          echo "::warning::review: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
@@ -977,8 +1006,37 @@ jobs:
           # [wo:gate-reviewer-infra-nonblocking-landing]
           case "$TOKEN" in
             PASS)        echo "Opus review ran and succeeded." ; exit 0 ;;
-            ROUTE_HUMAN) gh issue edit "$PR_NUMBER" --add-label needs-human-review \
-                           --repo "$GITHUB_REPOSITORY" || true
+            ROUTE_HUMAN)
+                         # The label IS the safety mechanism on this path.
+                         # This arm exits 0 by design so the check does not sit
+                         # permanently red (the reviewer never retroactively
+                         # "runs" on a stale PR). But that design rests ENTIRELY
+                         # on needs-human-review, which merge-guard.yml and
+                         # auto-arm-merge.yml are the only things blocking on.
+                         # Written with `|| true` and never read back, one
+                         # dropped write lets an UNREVIEWED PR merge green.
+                         #
+                         # Not hypothetical, and the fix already exists in THIS
+                         # repo: auto-arm-merge.yml retries-and-checks its own
+                         # label write precisely because the identical call
+                         # failed with a bare 502 on savvy-frontend#215
+                         # (2026-08-13). That pattern never reached here.
+                         if ! bash .github/scripts/gh_retry.sh --retries 2 --sleep 2 -- \
+                              gh issue edit "$PR_NUMBER" --add-label needs-human-review \
+                              --repo "$GITHUB_REPOSITORY"; then
+                           echo "::error::opus-gate: could not apply needs-human-review after retries. Exiting 0 here would leave an unreviewed PR with NO backstop. Failing loud instead."
+                           exit 1
+                         fi
+                         # Read it back over REST (separate rate-limit bucket,
+                         # and a write that reported success is not proof the
+                         # label is there). Captured, not piped — a pipeline
+                         # hides the exit code, a documented trap in this project.
+                         LABELS_NOW="$(bash .github/scripts/gh_retry.sh --retries 2 --sleep 2 -- \
+                           gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" --jq '.[].name' || true)"
+                         if ! printf '%s\n' "$LABELS_NOW" | grep -qx needs-human-review; then
+                           echo "::error::opus-gate: needs-human-review is NOT present after a write that reported success — the only backstop on this path is missing. Failing loud."
+                           exit 1
+                         fi
                          echo "::warning::opus-gate: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
