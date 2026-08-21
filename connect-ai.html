@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Savvy to your AI — Savvy</title>
+    <meta name="description" content="Add Savvy's MCP server to Claude, ChatGPT, or any AI assistant: one URL, sign in with your Savvy account, and your assistant can check your card benefits, expiring credits, and offers.">
+    <link rel="canonical" href="https://withsavvy.ai/connect-ai">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Savvy">
+    <meta property="og:title" content="Connect Savvy to your AI — Savvy">
+    <meta property="og:description" content="One URL to plug your card benefits into Claude or ChatGPT. Sign in with your Savvy account; revoke anytime.">
+    <meta property="og:url" content="https://withsavvy.ai/connect-ai">
+    <meta property="og:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Connect Savvy to your AI — Savvy">
+    <meta name="twitter:description" content="One URL to plug your card benefits into Claude or ChatGPT. Sign in with your Savvy account; revoke anytime.">
+    <meta name="twitter:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
+    <link rel="icon" type="image/svg+xml" href="/Assets/brand/savvy-mark.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/Assets/brand/favicon-32.png">
+    <link rel="apple-touch-icon" href="/Assets/brand/apple-touch-icon.png">
+    <meta name="theme-color" content="#12291F">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"></noscript>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Connect Savvy to your AI — Savvy",
+        "description": "How to connect Savvy's MCP server to Claude, ChatGPT, and other AI assistants.",
+        "url": "https://withsavvy.ai/connect-ai",
+        "isPartOf": {
+            "@type": "WebSite",
+            "name": "Savvy",
+            "url": "https://withsavvy.ai/"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "Savvy",
+            "url": "https://withsavvy.ai/"
+        }
+    }
+    </script>
+    <style>
+        :root {
+            --bg-primary: #fafaf9;
+            --bg-white: #ffffff;
+            --bg-subtle: #f5f5f4;
+            --text-primary: #1c1917;
+            --text-secondary: #78716c;
+            --text-muted: #a8a29e;
+            --accent: #275E43;
+            --accent-dark: #1C4632;
+            --accent-deeper: #1C4632;
+            --accent-light: #E7F2EC;
+            --border: #e7e5e4;
+            --border-light: #f5f5f4;
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-full: 100px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+        .serif { font-family: 'Instrument Serif', Georgia, serif; }
+
+        a:focus-visible,
+        button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* NAV */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(250, 250, 249, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-light);
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 400;
+            font-family: 'Instrument Serif', Georgia, serif;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        .logo-icon {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(39, 94, 67, 0.3);
+        }
+        .logo-icon svg { width: 36px; height: 36px; }
+        .nav-cta {
+            background: var(--text-primary);
+            color: white;
+            padding: 0.6rem 1.25rem;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .nav-cta:hover { background: #1C3A2C; }
+
+        /* HERO */
+        .hero {
+            padding: 9rem 2rem 3rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(39, 94, 67, 0.07), transparent);
+            pointer-events: none;
+        }
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent-light);
+            color: var(--accent-deeper);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.35rem 0.9rem;
+            border-radius: var(--radius-full);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .serif { font-weight: 400; font-style: italic; }
+        .hero-sub {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            max-width: 580px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        /* CONTENT */
+        .page-body {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 1rem 2rem 5rem;
+        }
+        .section { margin-bottom: 2.75rem; }
+        .section-number {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 0.4rem;
+        }
+        .section h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.75rem;
+        }
+        .section p { margin-bottom: 0.9rem; color: var(--text-primary); }
+        .section p:last-child { margin-bottom: 0; }
+        .section-divider { height: 1px; background: var(--border); margin: 2.5rem 0; }
+
+        .steps { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+        .steps li { margin-bottom: 0.55rem; }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            background: var(--bg-subtle);
+            border-radius: 6px;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.85em;
+        }
+
+        .url-box {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.9rem 1.1rem;
+            margin: 0.75rem 0 0.5rem;
+        }
+        .url-box code {
+            flex: 1;
+            background: none;
+            padding: 0;
+            font-size: 0.95rem;
+            word-break: break-all;
+            color: var(--accent-dark);
+        }
+        .copy-btn {
+            flex-shrink: 0;
+            border: 1px solid var(--border);
+            background: var(--bg-white);
+            color: var(--accent);
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: var(--radius-full);
+            padding: 0.4rem 0.9rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .copy-btn:hover { background: var(--accent-light); }
+
+        pre {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.9rem 1.1rem;
+            overflow-x: auto;
+            margin: 0.75rem 0 0.5rem;
+        }
+        pre code { background: none; padding: 0; font-size: 0.85rem; }
+
+        .examples {
+            background: var(--accent-light);
+            border: 1px solid rgba(39, 94, 67, 0.25);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.4rem;
+            margin-top: 1rem;
+        }
+        .examples-kicker {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent-deeper);
+            margin-bottom: 0.35rem;
+        }
+        .examples p { font-size: 0.95rem; color: #065f46; margin: 0.2rem 0; }
+
+        .scope-list { list-style: none; }
+        .scope-list li {
+            padding-left: 1.6rem;
+            position: relative;
+            margin-bottom: 0.6rem;
+        }
+        .scope-list li::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0.55em;
+            width: 0.55rem; height: 0.55rem;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+        .scope-list li.never::before { background: var(--text-muted); }
+
+        .fineprint { font-size: 0.85rem; color: var(--text-secondary); }
+
+        a { color: var(--accent); }
+
+        /* Footer */
+        footer {
+            padding: 2rem;
+            text-align: center;
+            background: var(--bg-white);
+            border-top: 1px solid var(--border-light);
+        }
+        .footer-logo { font-weight: 400; font-size: 1.25rem; margin-bottom: 0.4rem; font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.01em; }
+        .footer-text { font-size: 0.8rem; color: var(--text-muted); }
+        .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+        .footer-links a { font-size: 0.8rem; color: var(--text-muted); text-decoration: none; }
+        .footer-links a:hover { color: var(--accent); }
+
+        @media (max-width: 720px) {
+            .hero { padding: 8rem 1.5rem 2.5rem; }
+            .page-body { padding: 0.5rem 1.5rem 4rem; }
+            .url-box { flex-direction: column; align-items: stretch; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav aria-label="Primary">
+        <a href="index.html" class="logo">
+            <div class="logo-icon" aria-hidden="true">
+                <svg viewBox="0 0 512 512" width="36" height="36" aria-hidden="true"><defs><linearGradient id="sg-nav" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A5DDC2"/><stop offset="1" stop-color="#6FBF97"/></linearGradient></defs><rect width="512" height="512" rx="122" fill="#12291F"/><path d="M 344 152 C 322 122 288 106 252 106 C 196 106 158 138 158 184 C 158 226 188 248 256 262 C 324 276 354 300 354 342 C 354 390 314 406 260 406 C 220 406 184 390 166 360" fill="none" stroke="url(#sg-nav)" stroke-width="70" stroke-linecap="butt"/></svg>
+            </div>
+            Savvy
+        </a>
+        <a href="https://app.withsavvy.ai/#sign-up" class="nav-cta">Get started free</a>
+    </nav>
+
+    <div class="hero">
+        <div class="hero-eyebrow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
+            Connect your AI
+        </div>
+        <h1>Your benefits,<br><span class="serif">in the AI you already use.</span></h1>
+        <p class="hero-sub">Savvy runs an MCP server — the open standard that lets AI assistants connect to outside tools. Add it to Claude or ChatGPT once, sign in with your Savvy account, and your assistant can answer from your real wallet.</p>
+    </div>
+
+    <main class="page-body">
+
+        <div class="section" id="url">
+            <div class="section-number">The one thing you need</div>
+            <h2>Your connection URL</h2>
+            <div class="url-box">
+                <code id="mcp-url">https://tools.withsavvy.ai/mcp</code>
+                <button type="button" class="copy-btn" data-copy-target="mcp-url" hidden>Copy</button>
+            </div>
+            <p class="fineprint">One URL for every AI system. Your data stays yours — each connection signs in to your own Savvy account, and you can revoke it anytime.</p>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section" id="claude">
+            <div class="section-number">Step by step</div>
+            <h2>Connect Claude</h2>
+            <ol class="steps">
+                <li>Open <a href="https://claude.ai/settings/connectors">claude.ai → Settings → Connectors</a> (requires a paid Claude plan).</li>
+                <li>Click <strong>Add custom connector</strong>.</li>
+                <li>Name it <code>Savvy</code>, paste the connection URL above, and click <strong>Add</strong>.</li>
+                <li>Click <strong>Connect</strong> — a Savvy sign-in window opens. Sign in with your usual Savvy account.</li>
+                <li>That's it. The connector works across Claude on the web, desktop, and mobile.</li>
+            </ol>
+            <div class="examples">
+                <span class="examples-kicker">Try asking</span>
+                <p>"Which of my credits expire this month?"</p>
+                <p>"What's the best card in my wallet for dinner tonight?"</p>
+                <p>"Plan a night out around the credits I'd otherwise lose."</p>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section" id="chatgpt">
+            <h2>Connect ChatGPT</h2>
+            <ol class="steps">
+                <li>Open ChatGPT <strong>Settings → Connectors</strong> and enable <strong>Developer mode</strong> under Advanced settings (required for custom connectors, on paid ChatGPT plans).</li>
+                <li>Click <strong>Create</strong>, name it <code>Savvy</code>, and paste the same connection URL.</li>
+                <li>Choose <strong>OAuth</strong> authentication and finish — you'll be asked to sign in with your Savvy account.</li>
+            </ol>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section" id="other-clients">
+            <h2>Claude Code, Cursor &amp; other MCP clients</h2>
+            <p>Any client that supports remote MCP servers (streamable HTTP with OAuth) can connect with the same URL. For example, in Claude Code:</p>
+            <pre><code>claude mcp add --transport http savvy https://tools.withsavvy.ai/mcp</code></pre>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section" id="scope">
+            <div class="section-number">The boundaries</div>
+            <h2>What your AI can see and do</h2>
+            <ul class="scope-list">
+                <li><strong>See:</strong> your cards, each benefit and credit with amounts used and remaining, expiration dates, savings wins, and available card offers.</li>
+                <li><strong>Do, when you ask:</strong> pick the best card for a purchase, plan around expiring credits, and activate or dismiss card offers.</li>
+                <li class="never"><strong>Never:</strong> move money, make purchases, or see your bank logins or full card numbers — Savvy itself only has read-only access to accounts via Plaid.</li>
+            </ul>
+            <p class="fineprint">Disconnect anytime by removing the connector in your AI's settings — access stops with it. More on how this fits our data practices: <a href="privacy.html#byo-ai">Privacy &amp; Trust → Bring your own AI</a>.</p>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section" id="help">
+            <h2>Questions?</h2>
+            <p>We're happy to help you get set up — email <a href="mailto:support@withsavvy.ai">support@withsavvy.ai</a>.</p>
+        </div>
+
+    </main>
+
+    <footer>
+        <div class="footer-logo">Savvy</div>
+        <p class="footer-text">© 2026 Savvy</p>
+        <div class="footer-links">
+            <a href="privacy.html">Privacy &amp; Trust</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="sms-consent.html">SMS Consent</a>
+            <a href="mailto:support@withsavvy.ai">Contact</a>
+        </div>
+    </footer>
+
+    <script>
+        // Copy-to-clipboard for the connection-URL box. Buttons ship hidden
+        // and are revealed here, so a no-JS render never shows dead controls.
+        document.querySelectorAll('[data-copy-target]').forEach(function (button) {
+            button.hidden = false;
+            button.addEventListener('click', function () {
+                var source = document.getElementById(button.dataset.copyTarget);
+                if (!source) return;
+                navigator.clipboard.writeText(source.textContent.trim()).then(function () {
+                    var label = button.textContent;
+                    button.textContent = 'Copied ✓';
+                    setTimeout(function () { button.textContent = label; }, 2000);
+                }, function () { /* clipboard unavailable — leave the label untouched */ });
+            });
+        });
+    </script>
+</body>
+</html>
