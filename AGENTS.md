@@ -30,6 +30,24 @@ never invent a slug or commit SHA. Full procedure (incl. the GitHub-MCP
 variant for sessions without `gh`):
 `.claude/docs/work-order-submission.md` in savvy-workspace.
 
+## Replies to Sara are short + visual (Sara, 2026-08-21)
+
+Sara is ADHD-prone — long prose gets skimmed or lost. Anything she will read
+(PR bodies, handoff notes, reports, session replies):
+
+- **Answer first** — outcome in 1–2 sentences. Then a **visual** carries all
+  the data: table, mermaid chart, or inline bar (`▇▇▇▇▁▁ 68%`). Then ≤150
+  words of prose, only for what a visual can't hold (judgement, risk, root
+  cause).
+- **Compress, never cut** — every item and number goes in the visual; detail
+  stays one follow-up away via links, paths, and order IDs in the cells.
+- **Never compressed:** verbatim CI/test output (fenced block, never
+  paraphrased) and commands handed to Sara (complete, runnable, no comments
+  inside the fence).
+
+Full spec: `.claude/docs/visual-brevity-protocol.md` in
+`withSavvy/savvy-workspace`.
+
 ## No loose items — every item raised gets a disposition
 
 Standing rule (Sara, 2026-08-05): a session never carries a loose item.
