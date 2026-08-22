@@ -231,6 +231,18 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
         run: |
+          # GitHub runs this block as `bash -e`, and `set -uo pipefail` does
+          # NOT clear errexit. Without this `set +e` the script dies AT the
+          # failing command, so every `RC=$?` handler below is unreachable and
+          # no outcome is ever written — observed live on savvy-frontend#245,
+          # where the step exited 128 with `OUTCOME:` empty.
+          #
+          # The unset-means-infra default masked it for the git case, but a
+          # REAL finding would have died at the scanner the same way and been
+          # reported as "could not verify" instead of blocking. That is a
+          # worse failure than the one this job was fixed for: silently
+          # downgrading a genuine dangerous-CI-pattern finding.
+          set +e
           set -uo pipefail
 
           # Run git and the scanner as SEPARATE commands with separate exit
