@@ -229,18 +229,71 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
         run: |
           set -uo pipefail
-          git diff "$BASE_SHA...$HEAD_SHA" | python3 .github/scripts/workflow_safety_scan.py
+
+          # Run git and the scanner as SEPARATE commands with separate exit
+          # codes. This was `git diff ... | scan.py` under pipefail, which gave
+          # a broken git and a genuine finding the SAME exit path — so the
+          # escalation step below could not tell them apart, and asserted a
+          # finding either way.
+          #
+          # Not hypothetical: on 2026-08-22 both self-hosted runners had an
+          # unusable /dev/null for ~2h, every `git` exited 128, and this job
+          # reported "dangerous CI pattern; needs human review" on PRs whose
+          # scan had just printed "no dangerous patterns". Wrong in BOTH
+          # directions — the scanner was simultaneously being fed an empty
+          # diff, so a genuinely dangerous change would have passed identically.
+          DIFF="$RUNNER_TEMP/workflow-safety.patch"
+          git diff "$BASE_SHA...$HEAD_SHA" > "$DIFF"
+          GIT_RC=$?
+          if [ "$GIT_RC" -ne 0 ]; then
+            echo "outcome=infra" >> "$GITHUB_OUTPUT"
+            echo "::error::workflow-safety COULD NOT RUN: git diff exited $GIT_RC. Runner/infra fault, NOT a code finding."
+            exit 1
+          fi
+
+          # An empty diff on a PR that GitHub says changed files means the diff
+          # did not survive — not that there is nothing to scan. Fail closed and
+          # name which it is, rather than passing vacuously.
+          if [ ! -s "$DIFF" ] && [ "${CHANGED_FILES:-0}" -gt 0 ]; then
+            echo "outcome=infra" >> "$GITHUB_OUTPUT"
+            echo "::error::workflow-safety COULD NOT RUN: empty diff for a PR with $CHANGED_FILES changed file(s). Infra fault, NOT a code finding."
+            exit 1
+          fi
+
+          python3 .github/scripts/workflow_safety_scan.py < "$DIFF"
+          SCAN_RC=$?
+          if [ "$SCAN_RC" -ne 0 ]; then
+            echo "outcome=finding" >> "$GITHUB_OUTPUT"
+            exit "$SCAN_RC"
+          fi
+          echo "outcome=clean" >> "$GITHUB_OUTPUT"
 
       - name: Escalate to human on block
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.scan.outputs.outcome }}
         run: |
-          gh issue edit "${{ github.event.pull_request.number }}" \
-            --repo "$GITHUB_REPOSITORY" --add-label needs-human-review || true
-          echo "::error::workflow-safety blocked this PR — dangerous CI pattern; needs human review."
+          # Only a real scanner finding earns needs-human-review and the words
+          # "dangerous CI pattern". An infra fault gets gate-infra-error and is
+          # reported as "could not verify" — the same Type-B/Type-C split
+          # gitleaks and semgrep already make via gate_typed_check.sh.
+          #
+          # An UNSET outcome (step killed before it wrote one — timeout, runner
+          # loss) is treated as infra on purpose: claiming a finding nobody made
+          # is the worse error, and it is the exact failure this step shipped.
+          if [ "${OUTCOME:-}" = "finding" ]; then
+            gh issue edit "${{ github.event.pull_request.number }}" \
+              --repo "$GITHUB_REPOSITORY" --add-label needs-human-review || true
+            echo "::error::workflow-safety blocked this PR — dangerous CI pattern; needs human review."
+          else
+            gh issue edit "${{ github.event.pull_request.number }}" \
+              --repo "$GITHUB_REPOSITORY" --add-label gate-infra-error || true
+            echo "::error::workflow-safety could not verify this PR (outcome=${OUTCOME:-unset}) — infra fault, NOT a code rejection. Re-run once the runner is healthy."
+          fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 1  —  'review'  Sonnet FIXER #1
