@@ -5,6 +5,47 @@ Marketing site for Savvy (static HTML, deployed to Cloudflare via
 agent instructions and the work-order bank live in
 `withSavvy/savvy-workspace` (`AGENTS.md`, `.claude/docs/`).
 
+## First-principles thinking — the default working mode (Sara, 2026-09-01)
+
+**All work here is done from first-principles thinking.** This governs
+*method*, not priority — the constraints below still rank the work.
+
+Decompose to a **primitive you can check** (the row, the line, the CI log, the
+status code), then reason back up from it rather than pattern-matching to what
+a similar task looked like. What you derive from scratch is the **conclusion**,
+never the **code** — reuse libraries, patterns and prior work freely; never
+reuse a *claim* unchecked.
+
+1. **Ground every claim in a primitive you personally checked** — not "the doc
+   says", not "the PR body says checks are green", not "the last session
+   concluded", not "the sub-agent reported".
+2. **Interrogate the task before executing it.** A work order's brief is a
+   *hypothesis about a fix*, not the fix. If the ask and the real problem have
+   come apart, say so in one sentence, then deliver the ask as written under a
+   stated assumption — scope stays Sara's call.
+3. **Root-cause it, or label it a mitigation** in the PR body. "Flake", "race",
+   "transient" are labels, not causes.
+4. **Existing patterns are evidence, not authority.** Match them by default;
+   when a convention is what makes the task hard, name the constraint that
+   produced it and check it still holds. Never rewrite working code on taste
+   alone, and never widen a PR.
+5. **An earlier session's precedent is the weakest evidence in the building.**
+   Docs, memory and hand-offs go stale silently — **when a doc and the tree
+   disagree, the tree wins, and the doc gets fixed in the same session.**
+6. **Label your epistemic state** — **Verified** (ran it, here is the output) /
+   **Derived** (follows from something verified) / **Assumed** (unchecked, and
+   here is what breaks if it's wrong).
+7. **Delegated work is claimed work** — the parent re-derives every sub-agent
+   finding against a primitive before acting on it.
+
+**Smells that mean the rule is being skipped:** `should be fine` ·
+`presumably` · `the docs say` · `it worked last time` · `probably a flake` ·
+`the PR says checks are green`. Each is a claim standing where a primitive
+belongs.
+
+Full spec: `.claude/docs/first-principles-thinking.md` in
+`withSavvy/savvy-workspace`.
+
 ## Filing work orders (batches are never implemented in-session)
 
 Standing rule (Sara, 2026-07-17): when Sara hands over a batch of tasks, do
