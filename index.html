@@ -168,6 +168,37 @@
             display: inline-flex; align-items: center; gap: 0.35rem;
         }
         .hero-micro svg { width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; }
+        .hero-security-badge {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            background: var(--accent-bg); color: var(--accent-dark);
+            border: 1px solid var(--accent-light);
+            padding: 0.35rem 0.7rem; border-radius: 6px;
+            font-size: 0.78rem; font-weight: 600; line-height: 1.4;
+            margin-bottom: 1.25rem;
+        }
+        .hero-security-badge svg { width: 13px; height: 13px; flex-shrink: 0; }
+        .hero-audit-form {
+            display: flex; align-items: center; gap: 0.4rem;
+            width: 640px; max-width: 100%; margin: 0 auto;
+            padding: 0.3rem 0.3rem 0.3rem 0.4rem;
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius-full); box-shadow: var(--shadow-accent);
+        }
+        .hero-audit-form:focus-within { border-color: var(--accent); }
+        .hero-audit-form input {
+            flex: 1; min-width: 0; padding: 0.75rem;
+            border: none; outline: none; background: transparent;
+            font-family: inherit; font-size: 0.88rem; color: var(--text-body);
+        }
+        .hero-audit-form input::placeholder { color: var(--text-muted); }
+        .hero-audit-form .btn-primary {
+            white-space: nowrap; justify-content: center;
+            padding: 0.8rem 1.1rem; font-size: 0.88rem; box-shadow: none; gap: 0.45rem;
+        }
+        .hero-trust-row {
+            font-size: 0.82rem; color: var(--text-muted); line-height: 1.65;
+            max-width: 520px; margin: 1.1rem auto 0;
+        }
 
         .hero-visual { position: relative; z-index: 1; }
         .phone-mockup {
@@ -408,6 +439,20 @@
             .proof-stats { grid-template-columns: 1fr; gap: 0; }
             .proof-quotes { grid-template-columns: 1fr; }
         }
+        @media (min-width: 641px) and (max-width: 700px) {
+            .hero-audit-form { padding: 0.25rem 0.25rem 0.25rem 0.35rem; }
+            .hero-audit-form input { font-size: 0.8rem; padding: 0.7rem 0.5rem; }
+            .hero-audit-form .btn-primary { font-size: 0.8rem; padding: 0.75rem 0.85rem; }
+        }
+        @media (max-width: 640px) {
+            .hero-audit-form {
+                flex-direction: column; align-items: stretch;
+                gap: 0.5rem; padding: 0.5rem;
+                border-radius: var(--radius-lg);
+            }
+            .hero-audit-form input { text-align: center; padding: 0.7rem 0.75rem; }
+            .hero-audit-form .btn-primary { width: 100%; }
+        }
         @media (max-width: 600px) {
             .top-nav { padding: 1rem 1.25rem; }
             .nav-signin { white-space: nowrap; }
@@ -438,19 +483,22 @@
     <!-- HERO -->
     <section class="hero">
         <div class="hero-content">
-            <h1>You have the cards.<br><span class="serif">You're just not using them.</span></h1>
+            <span class="hero-security-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Read-only access, secured by Plaid — the same connection your bank app uses
+            </span>
+            <h1>Your cards owe you<br><span class="serif">about $639 a year.</span></h1>
             <p class="hero-sub">
-                Savvy's agents watch over every perk, credit, and deadline across all your benefits — so nothing falls through the cracks.
+                Savvy agents watch every credit, perk, and deadline on your premium cards — and text you before money expires.
             </p>
-            <a href="https://app.withsavvy.ai/" class="btn-primary">
-                Get Started Free
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </a>
-            <div class="hero-micro">
-                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Free for 30 days</span>
-                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> 5-minute setup</span>
-                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> No bank login required</span>
-            </div>
+            <form class="hero-audit-form" method="get" action="https://app.withsavvy.ai/">
+                <input type="text" name="card" autocomplete="off" aria-label="Which card do you carry?" placeholder="Which card do you carry? e.g. Amex Platinum">
+                <button type="submit" class="btn-primary">
+                    See what you are missing
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </form>
+            <p class="hero-trust-row">Free for 30 days, then $19.99/mo · Cancel anytime · 5-minute setup · No spreadsheets, ever.</p>
         </div>
         <div class="hero-visual">
             <div class="phone-mockup"><div class="phone-screen"><div class="lock-screen">
