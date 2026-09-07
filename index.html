@@ -178,6 +178,7 @@
         }
         .hero-security-badge svg { width: 13px; height: 13px; flex-shrink: 0; }
         .hero-audit-form {
+            position: relative;
             display: flex; align-items: center; gap: 0.4rem;
             width: 640px; max-width: 100%; margin: 0 auto;
             padding: 0.3rem 0.3rem 0.3rem 0.4rem;
@@ -195,6 +196,36 @@
             white-space: nowrap; justify-content: center;
             padding: 0.8rem 1.1rem; font-size: 0.88rem; box-shadow: none; gap: 0.45rem;
         }
+        .hero-card-suggest {
+            position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 20;
+            margin: 0; padding: 0.35rem; list-style: none; text-align: left;
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.10);
+            max-height: 320px; overflow-y: auto;
+        }
+        .hero-card-opt {
+            display: flex; flex-direction: column; gap: 0.1rem;
+            padding: 0.6rem 0.8rem; border-radius: var(--radius-md); cursor: pointer;
+        }
+        .hero-card-opt:hover, .hero-card-opt[aria-selected="true"] { background: var(--accent-bg); }
+        .hero-card-opt-name { font-size: 0.9rem; font-weight: 600; color: var(--text-body); }
+        .hero-card-opt-issuer { font-size: 0.76rem; color: var(--text-muted); }
+        .hero-card-opt-empty { padding: 0.7rem 0.8rem; font-size: 0.82rem; color: var(--text-muted); cursor: default; }
+        .hero-card-picks {
+            width: 640px; max-width: 100%; margin: 0.65rem auto 0;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem;
+        }
+        .hero-card-pick {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.35rem 0.5rem 0.35rem 0.75rem; border-radius: var(--radius-full);
+            background: var(--accent-light); color: var(--accent-dark);
+            font-size: 0.82rem; font-weight: 600;
+        }
+        .hero-card-pick-remove {
+            border: none; background: transparent; color: inherit;
+            font-size: 1rem; line-height: 1; cursor: pointer; padding: 0 0.15rem; opacity: 0.75;
+        }
+        .hero-card-pick-remove:hover, .hero-card-pick-remove:focus-visible { opacity: 1; }
         .hero-trust-row {
             font-size: 0.82rem; color: var(--text-muted); line-height: 1.65;
             max-width: 520px; margin: 1.1rem auto 0;
@@ -493,12 +524,15 @@
                 Savvy agents watch every credit, perk, and deadline on your premium cards — and text you before money expires.
             </p>
             <form class="hero-audit-form" method="get" action="https://app.withsavvy.ai/">
-                <input type="text" name="card" autocomplete="off" aria-label="Which card do you carry?" placeholder="Which card do you carry? e.g. Amex Platinum">
+                <input type="hidden" name="source" value="landing">
+                <input type="text" name="card" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hero-card-suggest" aria-label="Which card do you carry?" placeholder="Which card do you carry? e.g. Amex Platinum">
+                <ul id="hero-card-suggest" class="hero-card-suggest" role="listbox" aria-label="Matching cards" hidden></ul>
                 <button type="submit" class="btn-primary">
                     See what you are missing
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>
             </form>
+            <div id="hero-card-picks" class="hero-card-picks" aria-live="polite" aria-label="Cards you picked" hidden></div>
             <p class="hero-trust-row">Free for 30 days, then $19.99/mo · Cancel anytime · 5-minute setup · No spreadsheets, ever.</p>
         </div>
         <div class="hero-visual">
@@ -737,6 +771,137 @@
             el.style.transition = `all 0.5s ease-out ${i * 0.06}s`;
             fadeObserver.observe(el);
         });
+    </script>
+    <script src="/js/savvy-api-config.js"></script>
+    <script>
+        // Hero card search: suggestions come from the app's own public,
+        // rate-limited picker endpoint (GET /api/cards/catalog/search — the one
+        // catalog read a signed-out caller may make), so "chase sapphire" shows
+        // the same cards here as it does inside the app. Picking a suggestion
+        // adds it as a chip (a wallet holds more than one card — Reserve AND
+        // Preferred), the button hands every pick to the app as
+        // ?cards=<slug,slug>, plus ?card=<text> for anything typed but not
+        // picked, and the app's picker adds them all. Navigation happens in
+        // script; the no-JS fallback is the plain GET the form already declares.
+        (function () {
+            var form = document.querySelector('.hero-audit-form');
+            if (!form) return;
+            var input = form.querySelector('input[name="card"]');
+            var list = document.getElementById('hero-card-suggest');
+            var picksEl = document.getElementById('hero-card-picks');
+            var APP_ORIGIN = 'https://app.withsavvy.ai/';
+            var DEFAULT_PLACEHOLDER = input.placeholder;
+            var MIN_CHARS = 2, MAX_ROWS = 8, MAX_PICKS = 10, DEBOUNCE_MS = 200;
+            var timer = null, seq = 0, rows = [], active = -1, picks = [];
+
+            function apiOrigin() { return window.SAVVY_API_ORIGIN || 'https://api.withsavvy.ai'; }
+            function isPicked(card) { return picks.some(function (p) { return p.slug === card.slug; }); }
+            function close() {
+                list.hidden = true; list.textContent = '';
+                rows = []; active = -1;
+                input.setAttribute('aria-expanded', 'false');
+                input.removeAttribute('aria-activedescendant');
+            }
+            function setActive(i) {
+                var items = list.querySelectorAll('.hero-card-opt');
+                active = i;
+                for (var k = 0; k < items.length; k++) items[k].setAttribute('aria-selected', k === i ? 'true' : 'false');
+                if (i >= 0 && items[i]) { input.setAttribute('aria-activedescendant', items[i].id); items[i].scrollIntoView({ block: 'nearest' }); }
+                else input.removeAttribute('aria-activedescendant');
+            }
+            function renderPicks() {
+                picksEl.textContent = '';
+                picksEl.hidden = picks.length === 0;
+                picks.forEach(function (card) {
+                    var chip = document.createElement('span'); chip.className = 'hero-card-pick';
+                    var name = document.createElement('span'); name.textContent = card.name;
+                    var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'hero-card-pick-remove';
+                    rm.setAttribute('aria-label', 'Remove ' + card.name); rm.textContent = '\u00d7';
+                    rm.addEventListener('click', function () {
+                        picks = picks.filter(function (p) { return p.slug !== card.slug; });
+                        renderPicks(); input.focus();
+                    });
+                    chip.appendChild(name); chip.appendChild(rm); picksEl.appendChild(chip);
+                });
+                input.placeholder = picks.length ? 'Add another card, or press the button' : DEFAULT_PLACEHOLDER;
+            }
+            function choose(card) {
+                if (!isPicked(card) && picks.length < MAX_PICKS) picks.push(card);
+                renderPicks();
+                input.value = ''; close(); input.focus();
+            }
+            function go() {
+                var target = new URL(APP_ORIGIN);
+                target.searchParams.set('source', 'landing');
+                if (picks.length) target.searchParams.set('cards', picks.map(function (p) { return p.slug; }).join(','));
+                var typed = input.value.trim();
+                // `card` carries typed-but-unpicked text; with nothing typed it
+                // repeats the first pick so an app build that only knows
+                // `card=` (the single-slug hand-off) still adds that one.
+                if (typed) target.searchParams.set('card', typed);
+                else if (picks.length) target.searchParams.set('card', picks[0].slug);
+                window.location.assign(target.toString());
+            }
+            function render(cards, q) {
+                list.textContent = '';
+                rows = cards;
+                if (cards.length === 0) {
+                    var empty = document.createElement('li');
+                    empty.className = 'hero-card-opt-empty';
+                    empty.textContent = 'No card matches \u201c' + q + '\u201d yet \u2014 try the issuer name, or press the button and we\u2019ll look together.';
+                    list.appendChild(empty);
+                } else {
+                    cards.forEach(function (card, i) {
+                        var li = document.createElement('li');
+                        li.className = 'hero-card-opt'; li.id = 'hero-card-opt-' + i;
+                        li.setAttribute('role', 'option'); li.setAttribute('aria-selected', 'false');
+                        var name = document.createElement('span'); name.className = 'hero-card-opt-name'; name.textContent = card.name;
+                        var issuer = document.createElement('span'); issuer.className = 'hero-card-opt-issuer'; issuer.textContent = card.issuer + (card.is_business ? ' \u00b7 Business' : '');
+                        li.appendChild(name); li.appendChild(issuer);
+                        // mousedown, not click: the input's blur would close the list first.
+                        li.addEventListener('mousedown', function (e) { e.preventDefault(); choose(card); });
+                        li.addEventListener('mousemove', function () { if (active !== i) setActive(i); });
+                        list.appendChild(li);
+                    });
+                }
+                list.hidden = false; active = -1;
+                input.setAttribute('aria-expanded', 'true');
+            }
+            function search(q) {
+                var mine = ++seq;
+                fetch(apiOrigin() + '/api/cards/catalog/search?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (mine !== seq) return;
+                        if (!data || !Array.isArray(data.cards)) { close(); return; }
+                        // Already-picked cards stay out of the list so every row is a new add.
+                        render(data.cards.filter(function (c) { return !isPicked(c); }).slice(0, MAX_ROWS), q);
+                    })
+                    .catch(function () { if (mine === seq) close(); });
+            }
+
+            input.addEventListener('input', function () {
+                var q = input.value.trim();
+                clearTimeout(timer);
+                if (q.length < MIN_CHARS) { seq++; close(); return; }
+                timer = setTimeout(function () { search(q); }, DEBOUNCE_MS);
+            });
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Backspace' && input.value === '' && picks.length) { picks.pop(); renderPicks(); return; }
+                if (list.hidden) return;
+                if (e.key === 'ArrowDown') { e.preventDefault(); if (rows.length) setActive((active + 1) % rows.length); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); if (rows.length) setActive((active - 1 + rows.length) % rows.length); }
+                else if (e.key === 'Enter' && active >= 0 && rows[active]) { e.preventDefault(); choose(rows[active]); }
+                else if (e.key === 'Escape') { close(); }
+            });
+            input.addEventListener('blur', function () { setTimeout(close, 120); });
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                clearTimeout(timer); seq++;
+                if (!picks.length && input.value.trim().length === 0) { input.focus(); return; }
+                go();
+            });
+        })();
     </script>
     <script src="js/contact-link.js" defer></script>
 </body>

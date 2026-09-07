@@ -13,6 +13,11 @@
 #   api.withsavvy.ai      -> fetch() target of the waitlist form
 #                            (index-1.html, index3.html)
 #   data:                 -> the inline SVG favicon on every page
+#   app.withsavvy.ai      -> form-action target of the hero card search on
+#                            index.html (method=get, the no-JS fallback; the
+#                            script path navigates via location.assign, which
+#                            form-action does not gate). Without it the
+#                            'self'-only directive blocked the submit outright.
 # 'unsafe-inline' is required for both script and style because the site ships
 # every stylesheet and every script inline in the HTML (plus one inline
 # `onload=` handler on the font <link>). Nonces would need a build step; the
@@ -26,4 +31,4 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
   Permissions-Policy: accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.withsavvy.ai; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self' https://app.withsavvy.ai; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.withsavvy.ai; upgrade-insecure-requests
