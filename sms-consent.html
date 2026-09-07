@@ -424,6 +424,7 @@
         .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.75rem; }
         .footer-links a { font-size: 0.8rem; color: var(--text-muted); text-decoration: none; }
         .footer-links a:hover { color: var(--accent); }
+        .contact-link { white-space: nowrap; }
 
         /* Mobile */
         @media (max-width: 720px) {
@@ -721,7 +722,7 @@
             <a href="privacy.html">Privacy &amp; Trust</a>
             <a href="terms.html">Terms of Service</a>
             <a href="sms-consent.html">SMS Consent</a>
-            <a href="mailto:support@withsavvy.ai">Contact</a>
+            <a href="mailto:support@withsavvy.ai" class="contact-link" data-contact-email="support@withsavvy.ai">support@withsavvy.ai</a>
         </div>
     </footer>
 
@@ -739,5 +740,6 @@
         }, { rootMargin: '-20% 0px -70% 0px' });
         sections.forEach(s => observer.observe(s));
     </script>
+    <script src="js/contact-link.js" defer></script>
 </body>
 </html>
