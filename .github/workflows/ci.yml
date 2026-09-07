@@ -27,5 +27,5 @@ jobs:
           html5validator --root . --also-check-css \
             --match '*.html' \
             --ignore 'Assets/' \
-            --ignore-re 'Property "backdrop-filter" doesn'\''t exist' 'Property "inset" doesn'\''t exist' 'too few values for the property "linear-gradient"' 'is not a "color-stop" value' \
+            --ignore-re 'Property "backdrop-filter" doesn'\''t exist' 'Property "inset" doesn'\''t exist' 'Property "color-scheme" doesn'\''t exist' 'too few values for the property "linear-gradient"' 'is not a "color-stop" value' \
             --log INFO
