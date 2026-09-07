@@ -834,7 +834,11 @@
                 target.searchParams.set('source', 'landing');
                 if (picks.length) target.searchParams.set('cards', picks.map(function (p) { return p.slug; }).join(','));
                 var typed = input.value.trim();
+                // `card` carries typed-but-unpicked text; with nothing typed it
+                // repeats the first pick so an app build that only knows
+                // `card=` (the single-slug hand-off) still adds that one.
                 if (typed) target.searchParams.set('card', typed);
+                else if (picks.length) target.searchParams.set('card', picks[0].slug);
                 window.location.assign(target.toString());
             }
             function render(cards, q) {
