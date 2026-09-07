@@ -211,6 +211,21 @@
         .hero-card-opt-name { font-size: 0.9rem; font-weight: 600; color: var(--text-body); }
         .hero-card-opt-issuer { font-size: 0.76rem; color: var(--text-muted); }
         .hero-card-opt-empty { padding: 0.7rem 0.8rem; font-size: 0.82rem; color: var(--text-muted); cursor: default; }
+        .hero-card-picks {
+            width: 640px; max-width: 100%; margin: 0.65rem auto 0;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem;
+        }
+        .hero-card-pick {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.35rem 0.5rem 0.35rem 0.75rem; border-radius: var(--radius-full);
+            background: var(--accent-light); color: var(--accent-dark);
+            font-size: 0.82rem; font-weight: 600;
+        }
+        .hero-card-pick-remove {
+            border: none; background: transparent; color: inherit;
+            font-size: 1rem; line-height: 1; cursor: pointer; padding: 0 0.15rem; opacity: 0.75;
+        }
+        .hero-card-pick-remove:hover, .hero-card-pick-remove:focus-visible { opacity: 1; }
         .hero-trust-row {
             font-size: 0.82rem; color: var(--text-muted); line-height: 1.65;
             max-width: 520px; margin: 1.1rem auto 0;
@@ -516,6 +531,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>
             </form>
+            <div id="hero-card-picks" class="hero-card-picks" aria-live="polite" aria-label="Cards you picked" hidden></div>
             <p class="hero-trust-row">Free for 30 days, then $19.99/mo · Cancel anytime · 5-minute setup · No spreadsheets, ever.</p>
         </div>
         <div class="hero-visual">
@@ -759,21 +775,26 @@
     <script>
         // Hero card search: suggestions come from the app's own public,
         // rate-limited picker endpoint (GET /api/cards/catalog/search — the one
-        // catalog read a signed-out caller may make), so "chase flex" shows the
-        // same cards here as it does inside the app. Picking a card, or pressing
-        // the button, hands the visitor to the app with ?card=<slug|text>, which
-        // seeds its picker. Navigation happens in script: the page's CSP
-        // form-action is 'self', so a plain cross-origin submit would be blocked.
+        // catalog read a signed-out caller may make), so "chase sapphire" shows
+        // the same cards here as it does inside the app. Picking a suggestion
+        // adds it as a chip (a wallet holds more than one card — Reserve AND
+        // Preferred), the button hands every pick to the app as
+        // ?cards=<slug,slug>, plus ?card=<text> for anything typed but not
+        // picked, and the app's picker adds them all. Navigation happens in
+        // script; the no-JS fallback is the plain GET the form already declares.
         (function () {
             var form = document.querySelector('.hero-audit-form');
             if (!form) return;
             var input = form.querySelector('input[name="card"]');
             var list = document.getElementById('hero-card-suggest');
+            var picksEl = document.getElementById('hero-card-picks');
             var APP_ORIGIN = 'https://app.withsavvy.ai/';
-            var MIN_CHARS = 2, MAX_ROWS = 8, DEBOUNCE_MS = 200;
-            var timer = null, seq = 0, rows = [], active = -1, picked = null;
+            var DEFAULT_PLACEHOLDER = input.placeholder;
+            var MIN_CHARS = 2, MAX_ROWS = 8, MAX_PICKS = 10, DEBOUNCE_MS = 200;
+            var timer = null, seq = 0, rows = [], active = -1, picks = [];
 
             function apiOrigin() { return window.SAVVY_API_ORIGIN || 'https://api.withsavvy.ai'; }
+            function isPicked(card) { return picks.some(function (p) { return p.slug === card.slug; }); }
             function close() {
                 list.hidden = true; list.textContent = '';
                 rows = []; active = -1;
@@ -787,13 +808,35 @@
                 if (i >= 0 && items[i]) { input.setAttribute('aria-activedescendant', items[i].id); items[i].scrollIntoView({ block: 'nearest' }); }
                 else input.removeAttribute('aria-activedescendant');
             }
-            function go(card) {
+            function renderPicks() {
+                picksEl.textContent = '';
+                picksEl.hidden = picks.length === 0;
+                picks.forEach(function (card) {
+                    var chip = document.createElement('span'); chip.className = 'hero-card-pick';
+                    var name = document.createElement('span'); name.textContent = card.name;
+                    var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'hero-card-pick-remove';
+                    rm.setAttribute('aria-label', 'Remove ' + card.name); rm.textContent = '\u00d7';
+                    rm.addEventListener('click', function () {
+                        picks = picks.filter(function (p) { return p.slug !== card.slug; });
+                        renderPicks(); input.focus();
+                    });
+                    chip.appendChild(name); chip.appendChild(rm); picksEl.appendChild(chip);
+                });
+                input.placeholder = picks.length ? 'Add another card, or press the button' : DEFAULT_PLACEHOLDER;
+            }
+            function choose(card) {
+                if (!isPicked(card) && picks.length < MAX_PICKS) picks.push(card);
+                renderPicks();
+                input.value = ''; close(); input.focus();
+            }
+            function go() {
                 var target = new URL(APP_ORIGIN);
                 target.searchParams.set('source', 'landing');
-                target.searchParams.set('card', card ? card.slug : input.value.trim());
+                if (picks.length) target.searchParams.set('cards', picks.map(function (p) { return p.slug; }).join(','));
+                var typed = input.value.trim();
+                if (typed) target.searchParams.set('card', typed);
                 window.location.assign(target.toString());
             }
-            function choose(card) { picked = card; input.value = card.name; close(); go(card); }
             function render(cards, q) {
                 list.textContent = '';
                 rows = cards;
@@ -826,19 +869,20 @@
                     .then(function (data) {
                         if (mine !== seq) return;
                         if (!data || !Array.isArray(data.cards)) { close(); return; }
-                        render(data.cards.slice(0, MAX_ROWS), q);
+                        // Already-picked cards stay out of the list so every row is a new add.
+                        render(data.cards.filter(function (c) { return !isPicked(c); }).slice(0, MAX_ROWS), q);
                     })
                     .catch(function () { if (mine === seq) close(); });
             }
 
             input.addEventListener('input', function () {
-                picked = null;
                 var q = input.value.trim();
                 clearTimeout(timer);
                 if (q.length < MIN_CHARS) { seq++; close(); return; }
                 timer = setTimeout(function () { search(q); }, DEBOUNCE_MS);
             });
             input.addEventListener('keydown', function (e) {
+                if (e.key === 'Backspace' && input.value === '' && picks.length) { picks.pop(); renderPicks(); return; }
                 if (list.hidden) return;
                 if (e.key === 'ArrowDown') { e.preventDefault(); if (rows.length) setActive((active + 1) % rows.length); }
                 else if (e.key === 'ArrowUp') { e.preventDefault(); if (rows.length) setActive((active - 1 + rows.length) % rows.length); }
@@ -849,8 +893,8 @@
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
                 clearTimeout(timer); seq++;
-                if (!picked && input.value.trim().length === 0) { input.focus(); return; }
-                go(picked);
+                if (!picks.length && input.value.trim().length === 0) { input.focus(); return; }
+                go();
             });
         })();
     </script>
