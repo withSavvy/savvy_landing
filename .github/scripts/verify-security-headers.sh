@@ -134,6 +134,14 @@ NON_SUBRESOURCE_ORIGINS=(
   "http://www.w3.org"
   "https://schema.org"
   "http://localhost"
+  # connect-ai.html (published since #92): a navigation link to Claude's
+  # connector settings, and the MCP endpoint shown as copyable text in a
+  # <code> block for the user to paste into their own assistant. Neither is
+  # fetched, framed or scripted by the page, so neither belongs in the CSP.
+  # Measured 2026-09-07: this script failed on main for both before any PR
+  # touched the page, so every landing PR's gate was red on arrival.
+  "https://claude.ai"
+  "https://tools.withsavvy.ai"
 )
 
 # Scan exactly the pages .assetsignore actually publishes, so a newly published
