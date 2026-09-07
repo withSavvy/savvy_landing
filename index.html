@@ -432,6 +432,7 @@
         .footer-links { margin-top: 0.75rem; display: flex; justify-content: center; gap: 1.25rem; }
         .footer-links a { font-size: 0.85rem; color: var(--text-secondary); text-decoration: none; }
         .footer-links a:hover { color: var(--accent); }
+        .contact-link { white-space: nowrap; }
 
         /* ─── RESPONSIVE ─── */
         @media (max-width: 900px) {
@@ -692,7 +693,7 @@
         <div class="footer-logo">Savvy</div>
         <p class="footer-text">© 2026 Savvy. AI agents for the perks you're already paying for.</p>
         <p class="footer-text">Savvy is not affiliated with, endorsed by, or sponsored by any card issuer or network. All product and company names are trademarks of their respective holders. Savings figures and recommendations are for informational purposes only and are not financial advice; your card benefits are governed by your agreement with your issuer.</p>
-        <nav class="footer-links" aria-label="Footer"><a href="connect-ai.html" data-cta="footer_connect_ai">Connect your AI</a> · <a href="privacy.html" data-cta="footer_privacy">Privacy &amp; Trust</a> · <a href="terms.html" data-cta="footer_terms">Terms of Service</a> · <a href="sms-consent.html" data-cta="footer_sms">SMS Consent</a></nav>
+        <nav class="footer-links" aria-label="Footer"><a href="connect-ai.html" data-cta="footer_connect_ai">Connect Claude or ChatGPT</a> · <a href="privacy.html" data-cta="footer_privacy">Privacy &amp; Trust</a> · <a href="terms.html" data-cta="footer_terms">Terms of Service</a> · <a href="sms-consent.html" data-cta="footer_sms">SMS Consent</a> · <a href="mailto:support@withsavvy.ai" class="contact-link" data-contact-email="support@withsavvy.ai" data-cta="footer_contact">support@withsavvy.ai</a></nav>
     </footer>
 
     <script>
@@ -737,5 +738,6 @@
             fadeObserver.observe(el);
         });
     </script>
+    <script src="js/contact-link.js" defer></script>
 </body>
 </html>
