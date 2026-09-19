@@ -240,3 +240,43 @@ jobs:
             echo "::error::gh pr merge --auto --squash failed — auto-merge was NOT armed. Investigate manually."
             exit 1
           fi
+
+          # [wo:green-must-mean-acted-not-the-command-exited-0]
+          # Exit 0 from the call above is the COMMAND's claim about itself. It
+          # is not the repository's state, and the two came apart HERE, in this
+          # repo: on savvy_landing#116 this job reported `success` four times in
+          # a row while `auto_merge` stayed null, because a hold label sent it
+          # down the disarm branch. A green check that means "the job ran"
+          # rather than "the thing happened" is worse than no check — it is the
+          # reason that PR sat unmerged with every signal looking fine.
+          #
+          # So read the state back from the PR itself. Auto-merge is armed only
+          # when autoMergeRequest is non-null; MERGED is the other legitimate
+          # outcome, since a PR whose required checks were all green at arm time
+          # merges outright and never holds an autoMergeRequest.
+          #
+          # A failed READ-BACK is not a failed arm: the arm call already
+          # returned 0, so manufacturing a red here would be the mirror of the
+          # bug being fixed. Warn, say the effect is unverified, and stay green.
+          # (Unlike the arm call itself this read IS retried — re-reading is
+          # free and cannot half-apply, which is exactly why the arm is not.)
+          if ARM_STATE=$("$RETRY" --retries 2 --sleep 2 -- \
+                           gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+                           --json autoMergeRequest,state \
+                           -q 'if .autoMergeRequest != null then "ARMED" elif .state == "MERGED" then "MERGED" else "NOT_ARMED" end'); then
+            ARM_STATE=$(printf '%s' "$ARM_STATE" | tr -d '[:space:]')
+            case "$ARM_STATE" in
+              ARMED)
+                echo "Auto-merge armed — verified: autoMergeRequest is set on the PR."
+                ;;
+              MERGED)
+                echo "PR merged outright — every required check was already green at arm time."
+                ;;
+              *)
+                echo "::error::gh pr merge --auto --squash exited 0 but auto-merge is NOT armed and the PR is not merged (read back: ${ARM_STATE:-empty}). The command succeeded and the action did not happen."
+                exit 1
+                ;;
+            esac
+          else
+            echo "::warning::Could not read auto-merge state back after arming — the arm call returned 0 but its EFFECT IS UNVERIFIED. Treating as armed; check the PR manually if it does not merge."
+          fi
