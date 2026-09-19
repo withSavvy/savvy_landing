@@ -59,4 +59,4 @@ The CNAME for `withsavvy.ai` is already configured in DNS. To point a different 
 
 - **Analytics:** `ANALYTICS.md` — GA4 and optional page-view logging.
 - **Main Savvy:** https://github.com/Sara3/savvy
-- **Branch protection:** `main` requires `gate`, `merge-guard`, `workflow-safety` and `Gitleaks (secret scan)` (ruleset 23711370).
+- **Branch protection:** `main` requires `gate`, `merge-guard`, `workflow-safety` and `Gitleaks (secret scan)` — ruleset `23711370`. Note that `review` and `opus-gate` are deliberately NOT required: both fail by design on any `.github/**` change, so requiring them would block every workflow edit permanently.
