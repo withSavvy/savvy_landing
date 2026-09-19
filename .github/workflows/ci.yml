@@ -21,6 +21,9 @@ jobs:
       - name: Verify security response headers
         run: bash .github/scripts/verify-security-headers.sh
 
+      - name: Verify card pages match the sitemap
+        run: bash .github/scripts/verify-card-pages.sh
+
       - name: Validate HTML files
         run: |
           pip install html5validator
