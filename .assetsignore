@@ -8,9 +8,13 @@
 # `/_headers` as an always-ignored upload pattern. Un-ignoring it does not help
 # Cloudflare find it — it only publishes the config file itself at /_headers.
 !/index.html
-!/index-1.html
-!/index-2.html
-!/index3.html
+# index-1.html, index-2.html and index3.html are deliberately NOT published.
+# They are unlinked draft variants carrying dollar claims with no derivation
+# (an "average Savvy user finds $847/year" on index-1, "$1,565" on the other
+# two). Nothing in savvy_landing or savvy-frontend links to them, they are
+# absent from sitemap.xml, and they already carry noindex - but noindex is not
+# unpublished, and a direct URL still served them. Re-add a line here only
+# once every figure on that page is traceable to a committed derivation.
 !/privacy.html
 !/terms.html
 !/sms-consent.html
