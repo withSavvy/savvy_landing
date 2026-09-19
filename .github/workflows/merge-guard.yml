@@ -28,11 +28,29 @@ jobs:
     # a runner. The same pool outage swallowed four board-action dispatches
     # the same hour.
     #
-    # Now matches savvy-workspace's merge-guard, which reached this
-    # conclusion first and documents the trap in full. UNSET IS A NO-OP: with
-    # neither overflow variable set, this resolves to ubuntu-latest, which is
-    # always available.
-    runs-on: ${{ vars.CI_RUNNER_OVERFLOW || vars.CI_RUNNER_LIGHT || 'ubuntu-latest' }}
+    # THE FIX ABOVE REPRODUCED THE BUG IT CURED, ONE VARIABLE UP. Measured on
+    # this repo 2026-09-19: CI_RUNNER=ubuntu-latest (so every other workflow
+    # here runs fine) but CI_RUNNER_OVERFLOW=self-hosted-ci, which makes the
+    # `||` short-circuit on the FIRST term and routes this check straight back
+    # to the scarce pool. merge-guard was the only workflow in the repo on
+    # those two variables and the only one that never started: five runs
+    # queued and unassigned, the oldest 13+ minutes, while gate, ci, deploy
+    # and auto-arm-merge all completed in the same window.
+    #
+    # It has been that way since 2026-07-17T22:48:44Z. The repo variable
+    # CI_OVERFLOW_STATE reads {"overflowedAt":"2026-07-17T22:48:44.137Z",
+    # "lastHealthyAt":null} — flipped into overflow 64 days ago and never
+    # flipped back, because the flip-back cannot fire (tracked separately by
+    # [wo:ci-runner-guard-persist-overflow-state-so-flip-back-can-ever-fire]).
+    # An overflow flag that only ever latches ON makes "unset is a no-op" a
+    # promise this file cannot keep.
+    #
+    # So stop deriving this from variables at all. The first paragraph of this
+    # comment is the actual requirement — label-only, no secrets, no build, no
+    # VM-local state, MUST NOT queue behind the scarce pool — and a literal is
+    # the only way to state it that no variable can later contradict. This
+    # check has no reason to ever want a self-hosted runner.
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       pull-requests: read
