@@ -108,9 +108,58 @@ jobs:
             exit 1
           }
 
+          # read_live_is_draft() sets IS_DRAFT as a global — must be called
+          # bare, never wrapped in $(...), same subshell reason as
+          # read_live_holds() above.
+          #
+          # Ported from withSavvy/savvy-mcp-server, which ported it from
+          # savvy-workspace. Without it, `gh pr merge --auto` below is reached
+          # for a draft PR and GitHub rejects it with "Pull Request is still a
+          # draft (mergePullRequest)", which the fail-loudly wrapper on that
+          # call turns into a red arm-or-hold. Draft-first is the standing PR
+          # flow, so that reddened EVERY draft PR in this repo. Observed live
+          # on #110 (job 105945498377) and #111.
+          #
+          # Reads live via `gh pr view --json isDraft` rather than the
+          # triggering event payload, which freezes draft status at trigger
+          # time: a PR converted to draft after `opened`, or this job
+          # re-running on a delayed retry, would read stale from the payload
+          # and still try to arm.
+          #
+          # Unlike read_live_holds(), an unreadable draft status does NOT
+          # exit 1: draft is a deliberate state, not an error, so a transient
+          # read failure must not red this check either. Fail closed (do not
+          # arm) but exit 0.
+          IS_DRAFT=""
+          read_live_is_draft() {
+            local raw
+            if raw=$("$RETRY" --retries 2 --sleep 2 -- \
+                       gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+                       --json isDraft -q '.isDraft'); then
+              IS_DRAFT=$(printf '%s' "$raw" | tr -d '[:space:]')
+              return 0
+            fi
+            return 1
+          }
+
           disarm() {
             gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --disable-auto 2>/dev/null || true
           }
+
+          # Draft PRs cannot have auto-merge enabled — GitHub rejects
+          # `gh pr merge --auto` with "Pull Request is still a draft". Read
+          # live (see read_live_is_draft() above), not the frozen event
+          # payload. Placed BEFORE the first read_live_holds so a draft also
+          # does not burn the label and file-list API reads below. Skip
+          # cleanly; the workflow re-runs on `ready_for_review` and arms then.
+          if ! read_live_is_draft; then
+            echo "::warning::Could not confirm live draft status after retries — refusing to arm (fail-closed, not treated as an error)."
+            exit 0
+          fi
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "PR is a draft. Skipping auto-merge arming until ready for review."
+            exit 0
+          fi
 
           read_live_holds
           if [ -n "$HOLDS" ]; then
