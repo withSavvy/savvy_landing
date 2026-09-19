@@ -66,6 +66,10 @@ write_gh_stub() {
   cp "$seq" "$TMPROOT/labels.seq"
   printf '%s\n' "$files" > "$TMPROOT/files.txt"
   printf '0\n' > "$TMPROOT/readcount"
+  # [wo:green-must-mean-acted-not-the-command-exited-0] Default: the arm call
+  # actually took effect, so scenarios 1-10 keep their meaning. Scenario 11
+  # overrides this AFTER calling write_gh_stub.
+  printf 'ARMED\n' > "$TMPROOT/armstate"
 
   cat > "$bin/gh" <<STUB
 #!/bin/bash
@@ -88,6 +92,9 @@ case "\$*" in
     ;;
   *"--auto --squash"*)
     [ "$fail" = "merge" ] && { echo "not mergeable" >&2; exit 1; }
+    ;;
+  *"--json autoMergeRequest"*)
+    cat "$TMPROOT/armstate"
     ;;
   *"--disable-auto"*) ;;
   *) ;;
@@ -186,6 +193,28 @@ write_gh_stub "$(seq_file 'NONE' 'NONE')" "README.md" merge
 rc=$(run_arm)
 if [ "$rc" = "1" ]; then check "failed arm -> exits 1, no silent success" 0
 else check "failed arm -> exits 1, no silent success (rc=$rc)" 1; fi
+
+# --- 11. arm exits 0 but auto-merge is NOT armed -> red --------------------
+# [wo:green-must-mean-acted-not-the-command-exited-0]
+# THE INCIDENT THIS REPO OWNS. On savvy_landing#116 this job reported `success`
+# four consecutive times while auto_merge stayed null and the PR sat unmerged
+# with every signal green. Here the stub returns 0 from the arm call and then
+# reports NOT_ARMED — exactly that divergence. The job must go red.
+write_gh_stub "$(seq_file 'NONE' 'NONE')" "README.md"
+printf 'NOT_ARMED\n' > "$TMPROOT/armstate"
+rc=$(run_arm)
+if armed && [ "$rc" = "1" ]; then check "arm exits 0 but auto-merge not armed -> fails loudly" 0
+else check "arm exits 0 but auto-merge not armed -> fails loudly (armed=$(armed && echo 1 || echo 0) rc=$rc)" 1; fi
+
+# --- 12. PR merged outright at arm time -> green, not red ------------------
+# A PR whose required checks are already green merges on the spot and never
+# holds an autoMergeRequest. Without this case scenario 11's check would red
+# every such PR — the same false-signal bug pointed the other way.
+write_gh_stub "$(seq_file 'NONE' 'NONE')" "README.md"
+printf 'MERGED\n' > "$TMPROOT/armstate"
+rc=$(run_arm)
+if [ "$rc" = "0" ]; then check "PR merged outright at arm time -> green" 0
+else check "PR merged outright at arm time -> green (rc=$rc)" 1; fi
 
 if [ "$FAILS" -gt 0 ]; then
   echo "$FAILS test(s) FAILED"
