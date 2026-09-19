@@ -32,12 +32,12 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://withsavvy.ai/cards/american_express_platinum.html</loc>
+    <loc>https://withsavvy.ai/cards/american_express_platinum_schwab.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://withsavvy.ai/cards/american_express_platinum_schwab.html</loc>
+    <loc>https://withsavvy.ai/cards/american_express_platinum.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -126,5 +126,10 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  <!-- card-pages:end -->
+  <url>
+    <loc>https://withsavvy.ai/cards/bank_of_america_atmos_rewards_summit_visa_infinite.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+<!-- card-pages:end -->
 </urlset>
