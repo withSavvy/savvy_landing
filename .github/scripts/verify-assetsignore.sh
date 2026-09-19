@@ -45,6 +45,14 @@ assert_hidden "nested/new/path-that-does-not-exist.json"
 # it here would serve the config publicly at /_headers.
 assert_hidden "_headers"
 
+# Draft variants. These were published until 2026-09-19 and carried
+# user-outcome dollar claims with no derivation behind them. Asserted here so
+# re-publishing one is a deliberate edit to this file, not a silent allowlist
+# line that nobody reviews.
+assert_hidden "index-1.html"
+assert_hidden "index-2.html"
+assert_hidden "index3.html"
+
 assert_published "index.html"
 assert_published "privacy.html"
 assert_published "robots.txt"
