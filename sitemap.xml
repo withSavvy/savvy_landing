@@ -25,6 +25,7 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <!-- card-pages:start -->
   <url>
     <loc>https://withsavvy.ai/cards/</loc>
     <changefreq>monthly</changefreq>
@@ -125,9 +126,5 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  <url>
-    <loc>https://withsavvy.ai/cards/citi_prestige.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
+  <!-- card-pages:end -->
 </urlset>
