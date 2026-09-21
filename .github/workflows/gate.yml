@@ -189,8 +189,7 @@ jobs:
             echo ""
             echo "_— savvy gate · Type-B escalation (gitleaks)_"
           } > "$BODY_FILE"
-          CID=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" --paginate \
-            --jq ".[]|select(.body|contains(\"$MARKER\"))|.id" 2>/dev/null | head -1)
+          CID=$(bash .github/scripts/find_sticky_comment.sh "${REPO}" "${PR_NUMBER}" "$MARKER")
           if [ -n "$CID" ]; then
             gh api -X PATCH "repos/${REPO}/issues/comments/${CID}" -f body="$(cat "$BODY_FILE")" >/dev/null 2>&1 || true
           else
@@ -731,8 +730,7 @@ jobs:
             echo "_— savvy gate · auto-updated each run_"
           } > /tmp/body_sonnet.md
 
-          CID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq ".[]|select(.body|contains(\"$MARKER\"))|.id" 2>/dev/null | head -1)
+          CID=$(bash .github/scripts/find_sticky_comment.sh "$REPO" "$PR_NUMBER" "$MARKER")
           if [ -n "$CID" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$CID" \
               -f body="$(cat /tmp/body_sonnet.md)" >/dev/null 2>&1 || true
@@ -1219,8 +1217,7 @@ jobs:
             echo "_— savvy gate · auto-updated each run_"
           } > /tmp/body_opus.md
 
-          CID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq ".[]|select(.body|contains(\"$MARKER\"))|.id" 2>/dev/null | head -1)
+          CID=$(bash .github/scripts/find_sticky_comment.sh "$REPO" "$PR_NUMBER" "$MARKER")
           if [ -n "$CID" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$CID" \
               -f body="$(cat /tmp/body_opus.md)" >/dev/null 2>&1 || true
