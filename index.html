@@ -22,7 +22,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/Assets/brand/favicon-32.png">
     <link rel="apple-touch-icon" href="/Assets/brand/apple-touch-icon.png">
     <meta name="theme-color" content="#12291F">
-    <link rel="preload" as="image" href="./Assets/hero16.avif">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" onload="this.onload=null;this.rel='stylesheet'">
@@ -91,7 +90,6 @@
             --radius-lg: 24px;
             --radius-full: 999px;
             --ease: cubic-bezier(0.23, 1, 0.32, 1);
-            --phone-bg-image: url('./Assets/hero16.avif');
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -226,60 +224,25 @@
         .hero-trust-row span { display: inline-flex; align-items: center; gap: 0.35rem; }
         .hero-trust-row svg { width: 14px; height: 14px; color: var(--evergreen); }
 
-        .hero-visual { position: relative; z-index: 1; }
+        .hero-visual { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .phone-mockup {
             width: 300px; height: 620px; background: #1c1917; border-radius: 52px; padding: 12px;
             box-shadow: 0 50px 100px rgba(0,0,0,0.2), 0 30px 60px rgba(0,0,0,0.15), inset 0 0 0 2px rgba(255,255,255,0.1);
         }
         .phone-screen { width: 100%; height: 100%; border-radius: 42px; overflow: hidden; position: relative; }
-        .lock-screen {
-            width: 100%; height: 100%;
-            background-image: var(--phone-bg-image);
-            background-size: cover; background-position: 38% 40%;
-            display: flex; flex-direction: column; position: relative;
-        }
-        .lock-screen::before {
-            content: ''; position: absolute; inset: 0;
-            background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.05) 60%, rgba(0,0,0,0.25) 100%);
-            pointer-events: none;
-        }
-        .lock-screen::after {
-            content: ''; position: absolute; inset: 0;
-            background: linear-gradient(180deg, transparent 0%, transparent 45%, rgba(30,30,32,0.4) 75%, rgba(24,24,27,0.85) 100%);
-            pointer-events: none;
-        }
+        .thread-screen { width: 100%; height: 100%; background: var(--surface-subtle); display: flex; flex-direction: column; position: relative; text-align: left; }
         .dynamic-island { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 90px; height: 28px; background: #000; border-radius: 20px; z-index: 10; }
-        .lock-clock { padding-top: 65px; text-align: center; color: white; position: relative; z-index: 2; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        .lock-time { font-size: 4.5rem; font-weight: 700; line-height: 1; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; letter-spacing: -2px; }
-        .lock-date { font-size: 1.05rem; font-weight: 500; color: rgba(255,255,255,0.95); margin-top: 4px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; }
-        .notifications-area { position: absolute; bottom: 105px; left: 16px; right: 10px; z-index: 5; }
-        .ios-notification {
-            background: rgba(255,255,255,0.62); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border-radius: 18px; padding: 14px 16px 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08); position: relative;
-        }
-        .notif-avatar {
-            width: 40px; height: 40px; background: linear-gradient(135deg, var(--mint-bright) 0%, var(--mint) 100%);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            position: absolute; bottom: -12px; left: -12px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        .notif-avatar svg { width: 20px; height: 20px; color: var(--pine); }
-        .notif-message { height: 68px; position: relative; overflow: hidden; }
-        /* One message at a time: the script fades the current one fully out
-           before the next fades in, so two never overlap mid-transition. */
-        .notif-text {
-            position: absolute; top: 0; left: 0; right: 0;
-            font-size: 0.9rem; color: rgba(0,0,0,0.88); line-height: 1.5;
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-            opacity: 0; transform: translateY(4px); transition: opacity 0.3s ease, transform 0.3s ease;
-            display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
-        }
-        .notif-text.active { opacity: 1; transform: translateY(0); }
-        .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 120px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 2px; z-index: 10; }
-        .lock-bottom { position: absolute; bottom: 28px; left: 0; right: 0; z-index: 4; }
-        .lock-buttons { display: flex; justify-content: space-between; padding: 0 18px; }
-        .lock-btn { width: 46px; height: 46px; background: rgba(40,40,40,0.55); backdrop-filter: blur(15px); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .lock-btn svg { width: 22px; height: 22px; color: white; opacity: 0.95; }
+        .thread-head { padding: 54px 16px 12px; display: flex; align-items: center; gap: 10px; background: var(--paper); border-bottom: 1px solid var(--border); }
+        .thread-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--pine); color: var(--mint); font-family: 'Instrument Serif', Georgia, serif; font-size: 1.35rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .thread-name { font-weight: 600; font-size: 0.9rem; color: var(--ink); line-height: 1.2; }
+        .thread-sub { font-size: 0.72rem; color: var(--text-soft); }
+        .thread-body { flex: 1; padding: 14px 12px 8px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+        .msg { max-width: 88%; margin: 0; padding: 9px 12px; border-radius: 16px; font-size: 0.82rem; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; }
+        .msg.in { background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-bottom-left-radius: 4px; align-self: flex-start; }
+        .msg.out { background: var(--evergreen); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+        .thread-input { margin: 0 12px 36px; padding: 9px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text-soft); font-size: 0.8rem; }
+        .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 120px; height: 4px; background: rgba(0,0,0,0.25); border-radius: 2px; z-index: 10; }
+        .hero-visual-note { margin-top: 1rem; font-size: 0.82rem; color: var(--text-soft); }
 
         /* ─── CALENDAR (DARK) ─── */
         .evidence-section {
@@ -403,6 +366,34 @@
         .footer-links a:hover { color: var(--evergreen); }
         .contact-link { white-space: nowrap; }
 
+        .picker-label { display: block; width: 100%; max-width: 620px; margin: 0 auto 0.5rem; text-align: left; font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+
+        /* ─── CHANNEL SAMPLES ─── */
+        .mini { margin-top: 1rem; padding: 0.75rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); font-size: 0.8rem; line-height: 1.4; display: flex; flex-direction: column; gap: 6px; }
+        .mini-bubble { max-width: 92%; padding: 7px 10px; border-radius: 12px; }
+        .mini-bubble.in { background: var(--surface-subtle); color: var(--ink); align-self: flex-start; border-bottom-left-radius: 3px; }
+        .mini-bubble.out { background: var(--evergreen); color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
+        .mini-mail-subject { color: var(--ink); font-weight: 600; }
+        .mini-mail-subject span { color: var(--text-soft); font-weight: 500; }
+        .mini-mail-meta { color: var(--text-soft); font-size: 0.75rem; }
+        .mini-reply { align-self: flex-start; margin-top: 2px; padding: 4px 9px; border-radius: 999px; background: var(--tint); color: var(--evergreen-deep); font-weight: 600; font-size: 0.75rem; }
+        .mini-ai-tag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-soft); font-weight: 600; }
+        .mini-ai-q { color: var(--ink); font-weight: 600; }
+        .mini-ai-a { color: var(--text-soft); }
+        .mini-ai-a span { color: var(--evergreen-deep); font-weight: 600; }
+
+        /* ─── FAQ ─── */
+        .faq-section { padding: 4.5rem 2rem; background: var(--surface); border-top: 1px solid var(--border-light); }
+        .faq-inner { max-width: 680px; margin: 0 auto; }
+        .faq-inner h2 { font-size: clamp(1.9rem, 4vw, 2.5rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 1.5rem; color: var(--ink); text-align: center; }
+        .faq-inner details { border-top: 1px solid var(--border); }
+        .faq-inner details:last-child { border-bottom: 1px solid var(--border); }
+        .faq-inner summary { list-style: none; cursor: pointer; padding: 1rem 2rem 1rem 0; font-weight: 600; font-size: 1rem; color: var(--ink); position: relative; }
+        .faq-inner summary::-webkit-details-marker { display: none; }
+        .faq-inner summary::after { content: '+'; position: absolute; right: 0.25rem; top: 0.8rem; font-size: 1.4rem; font-weight: 400; color: var(--text-soft); line-height: 1; }
+        .faq-inner details[open] summary::after { content: '\2212'; }
+        .faq-inner details p { color: var(--text-soft); font-size: 0.95rem; line-height: 1.6; padding: 0 2rem 1.1rem 0; }
+
         /* ─── MOTION ─── */
         /* Content is visible by default. The script adds html.io only when it
            has an IntersectionObserver to reveal things with, so nothing can be
@@ -412,7 +403,6 @@
         @media (prefers-reduced-motion: reduce) {
             html { scroll-behavior: auto; }
             html.io .fade-in { opacity: 1; transform: none; transition: none; }
-            .notif-text { transition: none; }
         }
 
         /* ─── RESPONSIVE ─── */
@@ -434,16 +424,18 @@
             .hero h1 { font-size: 2.15rem; }
             .hero-sub { font-size: 1.05rem; }
             .hero-content { margin-bottom: 2.5rem; }
-            .phone-mockup { width: 270px; height: 560px; border-radius: 48px; }
+            .phone-mockup { width: 280px; height: 600px; border-radius: 48px; }
             .phone-screen { border-radius: 38px; }
-            .lock-time { font-size: 4rem; }
-            .evidence-section, .how-section, .agent-section, .cta-section { padding-left: 1.25rem; padding-right: 1.25rem; }
+            .msg { font-size: 0.78rem; padding: 8px 11px; }
+            .thread-input { margin-bottom: 30px; }
+            .evidence-section, .how-section, .agent-section, .faq-section, .cta-section { padding-left: 1.25rem; padding-right: 1.25rem; }
             .discovery-card { padding: 0.9rem 1rem; }
             .discovery-icon { width: 38px; height: 38px; }
             .agent-card { align-items: flex-start; }
         }
         @media (max-width: 340px) {
-            .phone-mockup { width: 240px; height: 500px; }
+            .phone-mockup { width: 250px; height: 560px; }
+            .msg { font-size: 0.74rem; }
         }
     </style>
 </head>
@@ -466,9 +458,10 @@
             <p class="hero-sub">
                 Pick the cards in your wallet. Savvy shows every credit they include, then texts you before each reset date.
             </p>
+            <label class="picker-label" for="hero-card-input">Start with a card in your wallet</label>
             <form class="hero-audit-form" method="get" action="https://app.withsavvy.ai/">
                 <input type="hidden" name="source" value="landing">
-                <input type="text" name="card" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hero-card-suggest" aria-label="Which card do you carry?" placeholder="Which card do you carry? e.g. Amex Platinum">
+                <input type="text" id="hero-card-input" name="card" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hero-card-suggest" placeholder="e.g. Amex Gold or Chase Sapphire">
                 <ul id="hero-card-suggest" class="hero-card-suggest" role="listbox" aria-label="Matching cards" hidden></ul>
                 <button type="submit" class="btn-primary" id="hero-cta">
                     <span id="hero-cta-label">See what's included</span>
@@ -483,26 +476,20 @@
             </p>
         </div>
         <div class="hero-visual">
-            <div class="phone-mockup"><div class="phone-screen"><div class="lock-screen">
+            <div class="phone-mockup"><div class="phone-screen"><div class="thread-screen">
                 <div class="dynamic-island"></div>
-                <div class="lock-clock"><div class="lock-time">9:41</div><div class="lock-date">Tuesday, January 28</div></div>
-                <div class="notifications-area"><div class="ios-notification">
-                    <div class="notif-avatar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div>
-                    <div class="notif-content"><div class="notif-message">
-                        <span class="notif-text active">You asked: "Which card at Whole Foods?" Your Visa, 3x on groceries. Not the Amex.</span>
-                        <span class="notif-text">Your $10 Grubhub credit resets in 3 days. Order lunch, it's already paid for.</span>
-                        <span class="notif-text">$15 Uber Cash renewed today. Last month's went unused.</span>
-                        <span class="notif-text">Booking a hotel? Your card gets the 4th night free through the portal.</span>
-                        <span class="notif-text">Cloud storage trial ends tomorrow at $10/mo. You uploaded one file. Cancel?</span>
-                        <span class="notif-text">$300 travel credit expires Dec 31. You've used $0 of it.</span>
-                    </div></div>
-                </div></div>
-                <div class="lock-bottom"><div class="lock-buttons">
-                    <div class="lock-btn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 2h12v6l-2 2v12H8V10L6 8V2zm2 2v3.17l2 2V20h4V7.17l2-2V4H8z"/><rect x="10" y="8" width="4" height="2" rx="0.5"/></svg></div>
-                    <div class="lock-btn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg></div>
-                </div></div>
+                <div class="thread-head"><span class="thread-avatar" aria-hidden="true">S</span><div><div class="thread-name">Savvy</div><div class="thread-sub">Text message</div></div></div>
+                <div class="thread-body">
+                    <p class="msg in fade-in" data-delay="0">Your $10 Grubhub credit resets in 3 days. It's on your Amex Gold and you haven't used it this month.</p>
+                    <p class="msg out fade-in" data-delay="450">Ordering Grubhub tonight. Which card?</p>
+                    <p class="msg in fade-in" data-delay="900">Amex Gold. The $10 credit covers part of it, and dining earns 4x.</p>
+                    <p class="msg out fade-in" data-delay="1350">Done</p>
+                    <p class="msg in fade-in" data-delay="1800">Marked used. I'll leave it out until it resets Oct 1.</p>
+                </div>
+                <div class="thread-input" aria-hidden="true">Text Savvy</div>
                 <div class="home-indicator"></div>
             </div></div></div>
+            <p class="hero-visual-note">An example thread. Savvy texts first, and answers when you ask.</p>
         </div>
     </section>
 
@@ -571,16 +558,31 @@
                     <div class="step-icon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg></div>
                     <div class="step-title">Texts</div>
                     <div class="step-desc">A text before a credit resets or a trial converts. Reply with a question and get an answer.</div>
+                    <div class="mini" aria-hidden="true">
+                        <span class="mini-bubble in">Your $300 travel credit expires Dec 31. You've used $0.</span>
+                        <span class="mini-bubble out">Which card for the flight?</span>
+                        <span class="mini-bubble in">Your Platinum. The credit covers it.</span>
+                    </div>
                 </div>
                 <div class="step-card fade-in">
                     <div class="step-icon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
                     <div class="step-title">Forwarded email</div>
                     <div class="step-desc">Forward a receipt, a trial confirmation or a gift card. Savvy tracks the deadline from there.</div>
+                    <div class="mini" aria-hidden="true">
+                        <div class="mini-mail-subject"><span>Fwd:</span> Your free trial ends Oct 12</div>
+                        <div class="mini-mail-meta">To: your Savvy address</div>
+                        <span class="mini-reply">Reminder set for Oct 10</span>
+                    </div>
                 </div>
                 <a class="step-card fade-in" href="connect-ai.html" data-cta="how_connect_ai">
                     <div class="step-icon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></div>
-                    <div class="step-title">Your AI</div>
-                    <div class="step-desc">Ask Claude or ChatGPT about your wallet. Savvy answers from your cards.</div>
+                    <div class="step-title">Your AI assistant</div>
+                    <div class="step-desc">Ask in ChatGPT or Claude. Savvy answers from your cards.</div>
+                    <div class="mini" aria-hidden="true">
+                        <div class="mini-ai-tag">In ChatGPT or Claude</div>
+                        <div class="mini-ai-q">Which of my cards still has a hotel credit this year?</div>
+                        <div class="mini-ai-a">Your Platinum. The $300 hotel credit is unused and resets Jan 1. <span>via Savvy</span></div>
+                    </div>
                     <span class="step-link">How to connect &rarr;</span>
                 </a>
             </div>
@@ -634,10 +636,41 @@
         </div>
     </div>
 
+    <!-- FAQ -->
+    <section class="faq-section">
+        <div class="faq-inner">
+            <h2>A few things <span class="serif">to know.</span></h2>
+            <details>
+                <summary>Do I have to connect my bank?</summary>
+                <p>No. Savvy works from the names of the cards you carry. No bank login required.</p>
+            </details>
+            <details>
+                <summary>Can I look before creating an account?</summary>
+                <p>Yes. Pick your cards and Savvy shows what they include right away. You add your phone number only when you want Savvy to keep watching them.</p>
+            </details>
+            <details>
+                <summary>How does Savvy know what I've used?</summary>
+                <p>Only what you tell it. Reply "Done" to a text, or mark a credit used in Savvy, and it stays out of your reminders until it resets. Your issuer statement is the final word on what has posted.</p>
+            </details>
+            <details>
+                <summary>What does it cost?</summary>
+                <p>Free for 30 days, then $19.99 a month. Texts, forwarded-email tracking and your AI assistant are all included. One missed $100 credit covers five months.</p>
+            </details>
+            <details>
+                <summary>Does Savvy spend money or cancel things for me?</summary>
+                <p>No. It reminds you and answers questions. You make the purchase or the cancellation.</p>
+            </details>
+            <details>
+                <summary>Which cards does Savvy know?</summary>
+                <p>2,600+ benefits across 270+ cards, from the big premium cards to airline and hotel co-brands. Type yours into the search above to check.</p>
+            </details>
+        </div>
+    </section>
+
     <!-- CTA -->
     <section class="cta-section" id="signup">
         <h2>Start with the cards <span class="serif">in your wallet.</span></h2>
-        <p>Free for 30 days, then $19.99 a month. No bank login required, nothing to pay today. Savvy tracks 2,600+ benefits across 270+ cards.</p>
+        <p>Free for 30 days, then $19.99 a month. One missed $100 credit covers five months of Savvy.</p>
         <a href="https://app.withsavvy.ai/?source=landing" class="btn-primary" id="cta-final" data-cta-follow>
             <span id="cta-final-label">See what my cards include</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -657,20 +690,6 @@
     <script>
         (function () {
             var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-            // Rotating lock-screen texts. The active message fades fully out
-            // before the next fades in, so only one is ever visible.
-            var messages = document.querySelectorAll('.notif-text');
-            var current = 0;
-            if (messages.length > 1 && !reduceMotion) {
-                setInterval(function () {
-                    messages[current].classList.remove('active');
-                    setTimeout(function () {
-                        current = (current + 1) % messages.length;
-                        messages[current].classList.add('active');
-                    }, 320);
-                }, 3800);
-            }
 
             // The reset-date count ticks up once when it scrolls into view.
             var counterEl = document.querySelector('.counter-amount');
@@ -698,7 +717,7 @@
                         fadeObserver.unobserve(entry.target);
                     });
                 }, { threshold: 0.15 });
-                fadeEls.forEach(function (el, i) { el.style.transitionDelay = (i % 3) * 70 + 'ms'; fadeObserver.observe(el); });
+                fadeEls.forEach(function (el, i) { el.style.transitionDelay = (el.getAttribute('data-delay') || (i % 3) * 70) + 'ms'; fadeObserver.observe(el); });
                 if (counterEl) {
                     var counterObserver = new IntersectionObserver(function (entries) {
                         entries.forEach(function (entry) {
