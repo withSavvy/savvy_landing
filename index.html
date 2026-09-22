@@ -563,9 +563,9 @@
                     <div class="step-title">Texts</div>
                     <div class="step-desc">A text before a credit resets or a trial converts. Reply with a question and get an answer.</div>
                     <div class="mini" aria-hidden="true">
-                        <span class="mini-bubble in">Your $300 travel credit expires Dec 31. You've used $0.</span>
-                        <span class="mini-bubble out">Which card for the flight?</span>
-                        <span class="mini-bubble in">Your Platinum. The credit covers it.</span>
+                        <span class="mini-bubble in">Your $300 hotel credit resets Jan 1. You've used $0 &mdash; it only counts on prepaid stays booked through Amex Travel.</span>
+                        <span class="mini-bubble out">Which card for the hotel this weekend?</span>
+                        <span class="mini-bubble in">Your Platinum, booked through Amex Travel. That's what the credit covers.</span>
                     </div>
                 </div>
                 <div class="step-card fade-in">
@@ -621,7 +621,7 @@
                     <div class="agent-icon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v4"/><path d="M12 17.5h.01"/></svg></div>
                     <div class="agent-body">
                         <div class="agent-title">Meditation app trial converts tomorrow, $13/mo</div>
-                        <div class="agent-desc">You opened it once. Cancel before midnight or it charges.</div>
+                        <div class="agent-desc">You forwarded the trial email on Sept 1. Cancel before midnight or it charges.</div>
                     </div>
                     <span class="agent-action">Cancel?</span>
                 </div>
@@ -764,7 +764,7 @@
             // MAX_PICKS mirrors MAX_HANDOFF_SLUGS in savvy-frontend/src/lib/card-handoff.ts —
             // the app truncates the ?cards= handoff at the same number, so raising one
             // without the other only moves the cut. 20 since 2026-09-22 (Sara carries 12-13).
-            var MIN_CHARS = 2, MAX_ROWS = 8, MAX_PICKS = 20, DEBOUNCE_MS = 200;
+            var MIN_CHARS = 2, MAX_ROWS = 8, MAX_PICKS = 20, DEBOUNCE_MS = 200, SEARCH_TIMEOUT_MS = 6000;
             var timer = null, seq = 0, rows = [], active = -1, picks = [];
 
             function apiOrigin() { return window.SAVVY_API_ORIGIN || 'https://api.withsavvy.ai'; }
@@ -854,18 +854,38 @@
                 list.hidden = false; active = -1;
                 input.setAttribute('aria-expanded', 'true');
             }
+            // Between the debounce firing and the response landing the list used to
+            // stay closed with no feedback, and a request that HUNG (a stalled proxy,
+            // a slow backend) looked identical to "nothing typed yet" forever — an
+            // outside reviewer typing "Venture" on 2026-09-22 saw no options at all.
+            // Now: a "Searching…" row appears immediately, and a request that has
+            // not answered within SEARCH_TIMEOUT_MS is aborted into renderUnavailable().
+            function renderSearching() {
+                list.textContent = '';
+                rows = []; active = -1;
+                var row = document.createElement('li');
+                row.className = 'hero-card-opt-empty';
+                row.textContent = 'Searching…';
+                list.appendChild(row);
+                list.hidden = false;
+                input.setAttribute('aria-expanded', 'true');
+            }
             function search(q) {
                 var mine = ++seq;
-                fetch(apiOrigin() + '/api/cards/catalog/search?q=' + encodeURIComponent(q))
+                renderSearching();
+                var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+                var kill = ctrl ? setTimeout(function () { ctrl.abort(); }, SEARCH_TIMEOUT_MS) : null;
+                fetch(apiOrigin() + '/api/cards/catalog/search?q=' + encodeURIComponent(q), ctrl ? { signal: ctrl.signal } : undefined)
                     .then(function (r) { return r.ok ? r.json() : null; })
                     .then(function (data) {
+                        if (kill) clearTimeout(kill);
                         if (mine !== seq) return;
                         // A 429 (rate limit) or 5xx lands here as null, same as a bad body.
                         if (!data || !Array.isArray(data.cards)) { renderUnavailable(); return; }
                         // Already-picked cards stay out of the list so every row is a new add.
                         render(data.cards.filter(function (c) { return !isPicked(c); }).slice(0, MAX_ROWS), q);
                     })
-                    .catch(function () { if (mine === seq) renderUnavailable(); });
+                    .catch(function () { if (kill) clearTimeout(kill); if (mine === seq) renderUnavailable(); });
             }
             // A failed search used to close the list silently, which reads as a
             // broken box. Say what happened and point at the path that still works.

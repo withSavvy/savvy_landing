@@ -540,7 +540,7 @@
                 <p>Plain facts about where AI sits in Savvy right now — what it reads today, and what it doesn't.</p>
                 <ul>
                     <li><strong>Most of Savvy's AI reads card data, not your data.</strong> The heavy lifting happens on issuer material — benefit guides, terms pages, fine print — building the catalog of what every card offers. That work reads issuer pages, not your accounts.</li>
-                    <li><strong>Your transactions are matched by Savvy's own deterministic engine.</strong> Bank activity syncs in via Plaid and gets matched to benefits by rules Savvy wrote — code, not a model. There is no AI model in that path today.</li>
+                    <li><strong>If you ever connect a bank, transactions are matched by Savvy's own deterministic engine.</strong> Bank connection is optional and is not offered in the app at launch; Savvy works from the names of the cards you carry and what you tell it. When a connection is available and you choose it, activity syncs in via Plaid and gets matched to benefits by rules Savvy wrote — code, not a model. There is no AI model in that path.</li>
                     <li><strong>AI processes the content you send to Savvy.</strong> Forward an email — a gift card, a receipt, a trial confirmation — or text a question, and AI reads that content to do the job you asked.</li>
                     <li><strong>All AI processing happens via API</strong> — and API data is not used to train the providers' models.</li>
                 </ul>
@@ -561,7 +561,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Plaid</td><td>Read-only bank connection. Savvy never sees or stores your bank credentials.</td></tr>
+                        <tr><td>Plaid</td><td>Read-only bank connection, optional and not offered in the app at launch. Savvy never sees or stores your bank credentials.</td></tr>
                         <tr><td>Clerk</td><td>Secure sign-in.</td></tr>
                         <tr><td>Supabase</td><td>Encrypted data storage.</td></tr>
                         <tr><td>Twilio</td><td>The texts Savvy sends and receives.</td></tr>

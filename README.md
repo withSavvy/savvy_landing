@@ -3,13 +3,13 @@
 **Marketing site for Savvy** — static landing page. Loosely connected to the main [Savvy](https://github.com/Sara3/savvy) app (credit card benefit tracker); this repo is **standalone** and has its **own GitHub repository**.
 
 - **Live site (Cloudflare Workers):** https://withsavvy.ai/
-- **Waitlist API (Render):** backend in this repo deploys to e.g. https://savvy-api-1kov.onrender.com (or your own Render service).
+- **Waitlist API (Render):** the waitlist server lives in a local-only `backend/` checkout that is NOT tracked in this repo (removed as a submodule in `01c8853`; see `.gitignore`). Static pages call the production API at `https://api.withsavvy.ai` via `js/savvy-api-config.js`.
 
 ## What’s in this repo
 
 - **Root:** static marketing page (`index.html`, styles, scripts). No build step; open `index.html` locally or deploy the repo as-is.
 - **Assets:** images in `Assets/` (hero, etc.).
-- **backend/:** small Node/Express server for waitlist signups (`POST /api/signup`). Deploy to Render (or similar) separately from the static site.
+- **backend/:** not in this repo. A cold clone has no `backend/` directory — do not go looking for it here.
 
 ## Run locally
 
@@ -22,7 +22,7 @@
 
 2. **Backend (optional, for form submit):**  
    ```bash
-   cd backend && npm install && npm start
+   (the waitlist server is a local-only checkout, not in this repo)
    ```
    By default it runs on port 3000. The landing page must point the signup form at this URL (or your deployed API URL) for waitlist to work.
 
@@ -47,8 +47,7 @@ The CNAME for `withsavvy.ai` is already configured in DNS. To point a different 
 
 ### Backend (waitlist API)
 
-- **Render:** Use `backend/render.yaml` (or connect the `backend/` directory as a separate Render service). Set env (e.g. `PORT`) as needed.
-- **CORS:** `backend/server.js` already allows origins for GitHub Pages and common local ports; add your custom domain (e.g. Clark) to the `origin` list if the landing page is served from that domain.
+- **Render:** the waitlist API is deployed from the local-only `backend/` checkout, not from this repo.
 
 ## Repo vs main Savvy app
 
