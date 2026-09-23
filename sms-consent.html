@@ -606,7 +606,7 @@
                 <ul>
                     <li><strong>Program name:</strong> Savvy Account Notifications &amp; Benefit Reminders</li>
                     <li><strong>Operated by:</strong> Sabera Daqiq, a sole proprietorship doing business as Savvy</li>
-                    <li><strong>Message frequency:</strong> varies, typically about weekly</li>
+                    <li><strong>Message frequency:</strong> varies; automated texts are capped at five per day. Typically a weekly update, plus a reminder when a credit is two days from expiring</li>
                     <li><strong>Cost:</strong> Savvy does not charge for texts. Message and data rates may apply from your carrier.</li>
                     <li><strong>Audience:</strong> existing, signed-in Savvy users who have opted in themselves</li>
                 </ul>
@@ -664,8 +664,12 @@
                 <div class="section-number">05</div>
                 <h2>What We Send</h2>
                 <p>Every message identifies Savvy as the sender and relates to your own account activity. Representative examples:</p>
-                <div class="msg-sample">Savvy: Your $50 Amex Gold dining credit expires in 3 days &mdash; don't lose it. Reply DONE when used, SNOOZE to skip this week, STOP to unsubscribe, HELP for help.</div>
-                <div class="msg-sample">Savvy: Marked your $15 Uber Cash credit as used. Nice. Reply STOP to unsubscribe, HELP for help.</div>
+                <div class="msg-sample">Savvy: your $15 Uber Cash (Platinum Card) expires in 2 days. Did you use it? Reply YES or NO.</div>
+                <div class="msg-sample">Savvy: Marked $15 Uber Cash (Platinum Card) as used - nice save! Details in the Savvy app.</div>
+                <div class="msg-sample">Savvy: No problem. Add your Platinum in the Uber app and pay with it. Reply NEVER to stop reminders for this one.</div>
+                <div class="msg-sample">Savvy: Open credits: 1) $15 Uber Cash (Platinum Card) 2d 2) $10 Dining Credit (Gold Card) 9d. Used any? Reply USED 1, YES for all or NO.</div>
+                <div class="msg-sample">Savvy: Text a store for your best card. STATUS = open credits. Reply YES/NO to a reminder, NEVER &lt;name&gt; to mute one, STOP to end. support@withsavvy.ai</div>
+                <p>Reply <strong>YES</strong> or <strong>NO</strong> to a reminder, <strong>NEVER</strong> to mute one benefit, <strong>STATUS</strong> for your open credits, a store name for your best card, <strong>STOP</strong> to unsubscribe, <strong>HELP</strong> for help. Automated texts are capped at five per day.</p>
                 <p>We do not send marketing or promotional messages, and we never message you about anything unrelated to your Savvy account.</p>
             </div>
 
@@ -680,10 +684,15 @@
                     </thead>
                     <tbody>
                         <tr><td>STOP</td><td>You are unsubscribed immediately and we send one confirmation. No further messages are sent.</td></tr>
-                        <tr><td>HELP</td><td>We reply with program information and our support contact.</td></tr>
+                        <tr><td>HELP</td><td>We reply with what you can text and our support contact (support@withsavvy.ai).</td></tr>
                         <tr><td>START / VERIFY</td><td>Confirms possession of the number after you have opted in inside the app.</td></tr>
-                        <tr><td>DONE</td><td>Marks the benefit in the reminder as used.</td></tr>
+                        <tr><td>YES / DONE / USED</td><td>Marks the benefit in the reminder as used (reply <strong>USED 2</strong> or <strong>USED UBER</strong> to pick one from a list).</td></tr>
+                        <tr><td>NO</td><td>Keeps the benefit open and replies with how to use it.</td></tr>
+                        <tr><td>NEVER</td><td>Mutes reminders for that one benefit only (<strong>NEVER UBER</strong> to name it). Texts about your other benefits continue; STOP ends all texts.</td></tr>
                         <tr><td>SNOOZE</td><td>Skips reminders for a week.</td></tr>
+                        <tr><td>STATUS</td><td>Lists your open credits, soonest-expiring first.</td></tr>
+                        <tr><td>MORE</td><td>After asking about a store, shows other cards that earn more there. Informational, never an offer.</td></tr>
+                        <tr><td>A store name</td><td>Tells you which of your cards to use there, and whether you hold a credit for it.</td></tr>
                     </tbody>
                 </table>
                 <p>UNSUBSCRIBE, CANCEL, END, and QUIT are honored the same way as STOP. You can also switch the setting off in the app at any time, which has the same effect.</p>
