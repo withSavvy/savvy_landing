@@ -602,11 +602,11 @@
             <div class="section" id="program">
                 <div class="section-number">01</div>
                 <h2>The Program</h2>
-                <p>Savvy operates one text-message program: <strong>Savvy Account Notifications &amp; Benefit Reminders</strong>. It sends recurring reminders before card benefits and statement credits expire, plus confirmations tied to your own account activity.</p>
+                <p>Savvy operates one text-message program: <strong>Savvy Account Notifications &amp; Benefit Reminders</strong>. It sends recurring reminders before card benefits and statement credits expire, a reminder the day before something you forwarded to Savvy lands (a free trial converting, a subscription renewing, a bill coming due, a return window or other deadline), plus confirmations tied to your own account activity.</p>
                 <ul>
                     <li><strong>Program name:</strong> Savvy Account Notifications &amp; Benefit Reminders</li>
                     <li><strong>Operated by:</strong> Sabera Daqiq, a sole proprietorship doing business as Savvy</li>
-                    <li><strong>Message frequency:</strong> varies; automated texts are capped at five per day. Typically a weekly update, plus a reminder when a credit is two days from expiring</li>
+                    <li><strong>Message frequency:</strong> varies; automated texts are capped at five per day. Typically a weekly update, plus a reminder when a credit is two days from expiring, plus one text the day before a forwarded trial, subscription, bill or deadline lands</li>
                     <li><strong>Cost:</strong> Savvy does not charge for texts. Message and data rates may apply from your carrier.</li>
                     <li><strong>Audience:</strong> existing, signed-in Savvy users who have opted in themselves</li>
                 </ul>
@@ -668,8 +668,10 @@
                 <div class="msg-sample">Savvy: Marked $15 Uber Cash (Platinum Card) as used - nice save! Details in the Savvy app.</div>
                 <div class="msg-sample">Savvy: No problem. Add your Platinum in the Uber app and pay with it. Reply NEVER to stop reminders for this one.</div>
                 <div class="msg-sample">Savvy: Open credits: 1) $15 Uber Cash (Platinum Card) 2d 2) $10 Dining Credit (Gold Card) 9d. Used any? Reply USED 1, YES for all or NO.</div>
+                <div class="msg-sample">Savvy: Netflix trial ends tomorrow, then $15.49. Cancel now if you don't want it. Reply DONE once cancelled, NO to keep it.</div>
+                <div class="msg-sample">Savvy: Con Edison $142.10 is due tomorrow (Sep 24). Pay it to avoid a late fee. Reply DONE once paid.</div>
                 <div class="msg-sample">Savvy: Text a store for your best card. STATUS = open credits. Reply YES/NO to a reminder, NEVER &lt;name&gt; to mute one, STOP to end. support@withsavvy.ai</div>
-                <p>Reply <strong>YES</strong> or <strong>NO</strong> to a reminder, <strong>NEVER</strong> to mute one benefit, <strong>STATUS</strong> for your open credits, a store name for your best card, <strong>STOP</strong> to unsubscribe, <strong>HELP</strong> for help. Automated texts are capped at five per day.</p>
+                <p>Reply <strong>YES</strong> or <strong>NO</strong> to a reminder, <strong>DONE</strong> when a forwarded trial, bill or deadline is handled, <strong>NEVER</strong> to mute one benefit or one forwarded item, <strong>STATUS</strong> for your open credits, a store name for your best card, <strong>STOP</strong> to unsubscribe, <strong>HELP</strong> for help. Automated texts are capped at five per day.</p>
                 <p>We do not send marketing or promotional messages, and we never message you about anything unrelated to your Savvy account.</p>
             </div>
 
@@ -686,10 +688,10 @@
                         <tr><td>STOP</td><td>You are unsubscribed immediately and we send one confirmation. No further messages are sent.</td></tr>
                         <tr><td>HELP</td><td>We reply with what you can text and our support contact (support@withsavvy.ai).</td></tr>
                         <tr><td>START / VERIFY</td><td>Confirms possession of the number after you have opted in inside the app.</td></tr>
-                        <tr><td>YES / DONE / USED</td><td>Marks the benefit in the reminder as used (reply <strong>USED 2</strong> or <strong>USED UBER</strong> to pick one from a list).</td></tr>
-                        <tr><td>NO</td><td>Keeps the benefit open and replies with how to use it.</td></tr>
-                        <tr><td>NEVER</td><td>Mutes reminders for that one benefit only (<strong>NEVER UBER</strong> to name it). Texts about your other benefits continue; STOP ends all texts.</td></tr>
-                        <tr><td>SNOOZE</td><td>Skips reminders for a week.</td></tr>
+                        <tr><td>YES / DONE / USED</td><td>Marks the benefit in the reminder as used (reply <strong>USED 2</strong> or <strong>USED UBER</strong> to pick one from a list). To a reminder about something you forwarded, marks it handled: a trial or subscription as cancelled, a bill as paid.</td></tr>
+                        <tr><td>NO</td><td>Keeps the benefit open and replies with how to use it. To a trial or subscription reminder, keeps it and stops those reminders; to a bill or deadline reminder, leaves it on your list.</td></tr>
+                        <tr><td>NEVER</td><td>Mutes reminders for that one benefit or forwarded item only (<strong>NEVER UBER</strong> to name it). Texts about your other benefits continue; STOP ends all texts.</td></tr>
+                        <tr><td>SNOOZE</td><td>Skips reminders for a week, or for the current cycle of a forwarded item.</td></tr>
                         <tr><td>STATUS</td><td>Lists your open credits, soonest-expiring first.</td></tr>
                         <tr><td>MORE</td><td>After asking about a store, shows other cards that earn more there. Informational, never an offer.</td></tr>
                         <tr><td>A store name</td><td>Tells you which of your cards to use there, and whether you hold a credit for it.</td></tr>
