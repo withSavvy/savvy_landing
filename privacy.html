@@ -4,19 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy &amp; Trust — Savvy</title>
-    <meta name="description" content="How Savvy uses your data: read-only bank access via Plaid, no selling personal information, and privacy controls you can revoke anytime.">
+    <meta name="description" content="How Savvy uses your data: encryption everywhere, no selling personal information, and privacy controls you can revoke anytime.">
     <link rel="canonical" href="https://withsavvy.ai/privacy">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Savvy">
     <meta property="og:title" content="Privacy &amp; Trust — Savvy">
-    <meta property="og:description" content="How Savvy uses your data: read-only bank access via Plaid, no selling personal information, and privacy controls you can revoke anytime.">
+    <meta property="og:description" content="How Savvy uses your data: encryption everywhere, no selling personal information, and privacy controls you can revoke anytime.">
     <meta property="og:url" content="https://withsavvy.ai/privacy">
     <meta property="og:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Privacy &amp; Trust — Savvy">
-    <meta name="twitter:description" content="How Savvy uses your data: read-only bank access via Plaid, no selling personal information, and privacy controls you can revoke anytime.">
+    <meta name="twitter:description" content="How Savvy uses your data: encryption everywhere, no selling personal information, and privacy controls you can revoke anytime.">
     <meta name="twitter:image" content="https://withsavvy.ai/Assets/brand/og-image.png">
     <link rel="icon" type="image/svg+xml" href="/Assets/brand/savvy-mark.svg">
     <link rel="icon" type="image/png" sizes="32x32" href="/Assets/brand/favicon-32.png">
@@ -31,7 +31,7 @@
         "@context": "https://schema.org",
         "@type": "WebPage",
         "name": "Privacy & Trust — Savvy",
-        "description": "Savvy privacy policy and trust commitments for financial data, Plaid connectivity, and user rights.",
+        "description": "Savvy privacy policy and trust commitments for financial data, optional bank connectivity via Plaid, and user rights.",
         "url": "https://withsavvy.ai/privacy",
         "isPartOf": {
             "@type": "WebSite",
@@ -598,7 +598,7 @@
                 <p>This Privacy Policy explains what personal information we collect, how we use it, and your choices. By using Savvy, you agree to the practices described here.</p>
                 <div class="callout">
                     <div class="callout-icon">🔒</div>
-                    <div class="callout-text"><strong>The short version:</strong> We access your financial data only to provide Savvy's features. We never sell your personal information. We use Plaid for read-only bank connectivity — we can never move money on your behalf.</div>
+                    <div class="callout-text"><strong>The short version:</strong> We access your financial data only to provide Savvy's features. We never sell your personal information. Bank connectivity via Plaid (read-only — we can never move money on your behalf) is not available in this version of Savvy.</div>
                 </div>
             </div>
 
@@ -626,7 +626,7 @@
                         <tr>
                             <td>Financial Data</td>
                             <td>Account balances, transaction history, recurring charges</td>
-                            <td>Via Plaid, with your consent</td>
+                            <td>Via Plaid, with your consent — not available in this version of Savvy</td>
                         </tr>
                         <tr>
                             <td>Card & Benefits</td>
@@ -681,19 +681,23 @@
             <div class="section" id="plaid">
                 <div class="section-number">04</div>
                 <h2>Plaid & Financial Data</h2>
-                <p>To connect your bank accounts, Savvy uses <strong>Plaid Technologies, Inc.</strong> Plaid is a trusted financial data network used by Venmo, Robinhood, Coinbase, and thousands of other apps.</p>
+                <div class="callout warning">
+                    <div class="callout-icon">⏳</div>
+                    <div class="callout-text"><strong>Not available in this version of Savvy.</strong> Bank account connection is not part of the current release. This section describes how it will work if and when we turn it on — you'll see it in the product, and this page will update, before that happens.</div>
+                </div>
+                <p>When bank connection ships, Savvy will use <strong>Plaid Technologies, Inc.</strong> to connect your bank accounts. Plaid is a trusted financial data network used by Venmo, Robinhood, Coinbase, and thousands of other apps.</p>
                 <div class="callout">
                     <div class="callout-icon">🏦</div>
-                    <div class="callout-text"><strong>Read-only access only.</strong> Savvy has no ability to move, transfer, or withdraw funds from your accounts. We access transaction history and balances to power Savvy's features — nothing else.</div>
+                    <div class="callout-text"><strong>Read-only access only.</strong> Savvy will have no ability to move, transfer, or withdraw funds from your accounts. We will access transaction history and balances to power Savvy's features — nothing else.</div>
                 </div>
                 <p>When you connect a financial account through Plaid:</p>
                 <ul>
-                    <li>You authenticate directly with your bank — Savvy never sees your banking username or password.</li>
-                    <li>Plaid transmits your financial data to us using bank-level encryption.</li>
-                    <li>Your data is governed by both this Privacy Policy and <a href="https://plaid.com/legal/end-user-privacy-policy/" target="_blank" style="color:var(--accent-dark);font-weight:600;">Plaid's End User Privacy Policy</a>.</li>
-                    <li>You can revoke Plaid access at any time — in Savvy under Settings → Connected Accounts, or directly at <a href="https://my.plaid.com" target="_blank" style="color:var(--accent-dark);font-weight:600;">my.plaid.com</a>.</li>
+                    <li>You will authenticate directly with your bank — Savvy will never see your banking username or password.</li>
+                    <li>Plaid will transmit your financial data to us using bank-level encryption.</li>
+                    <li>Your data will be governed by both this Privacy Policy and <a href="https://plaid.com/legal/end-user-privacy-policy/" target="_blank" style="color:var(--accent-dark);font-weight:600;">Plaid's End User Privacy Policy</a>.</li>
+                    <li>You will be able to revoke Plaid access at any time — in Savvy under Settings → Connected Accounts, or directly at <a href="https://my.plaid.com" target="_blank" style="color:var(--accent-dark);font-weight:600;">my.plaid.com</a>.</li>
                 </ul>
-                <p>Financial data retrieved via Plaid is encrypted at rest (AES-256) and in transit (TLS 1.2+) at all times.</p>
+                <p>Financial data retrieved via Plaid will be encrypted at rest (AES-256) and in transit (TLS 1.2+) at all times — the same standard Savvy already applies to your account data today.</p>
             </div>
 
             <div class="section-divider"></div>
@@ -719,7 +723,7 @@
                 <p>We do not sell your personal information. We share data only in the following limited circumstances:</p>
                 <ul>
                     <li><strong>Service providers</strong> — Trusted vendors who help us operate Savvy (e.g., cloud hosting, email delivery, analytics). These providers are contractually required to protect your data and may not use it for their own purposes. For more detail on key vendors we work with, see <a href="#partners" style="color:var(--accent-dark);font-weight:600;">Who we work with</a> above.</li>
-                    <li><strong>Plaid</strong> — To facilitate bank account connectivity as described above.</li>
+                    <li><strong>Plaid</strong> — To facilitate bank account connectivity, once that feature is available (see <a href="#plaid" style="color:var(--accent-dark);font-weight:600;">Plaid & Financial Data</a> above). Not active in this version of Savvy.</li>
                     <li><strong>Household members (if you choose)</strong> — If you invite a household member, they can see shared accounts and joint balances. Private accounts remain hidden. You control what is shared.</li>
                     <li><strong>Legal requirements</strong> — If required by law, court order, or to protect the rights and safety of Savvy or others, we may disclose information as legally required.</li>
                     <li><strong>Business transfers</strong> — In the event of a merger, acquisition, or sale of all or substantially all assets, your data may be transferred. We will notify you via email before your data is transferred and becomes subject to a different privacy policy.</li>
@@ -734,7 +738,7 @@
                 <p>We retain your personal information for as long as your account is active or as needed to provide the service. Specifically:</p>
                 <ul>
                     <li><strong>Account data</strong> is retained for the duration of your account and deleted within 30 days of account closure.</li>
-                    <li><strong>Financial transaction data</strong> from Plaid is retained for up to 7 years following account closure to comply with applicable financial regulations.</li>
+                    <li><strong>Financial transaction data</strong> from Plaid, once bank connection is available, will be retained for up to 7 years following account closure to comply with applicable financial regulations. This does not apply today — bank connection is not part of the current version of Savvy.</li>
                     <li><strong>Usage and analytics data</strong> is retained for up to 24 months in identifiable form, after which it is anonymized or deleted.</li>
                 </ul>
                 <p>You may request deletion of your account and associated data at any time by emailing <a href="mailto:support@withsavvy.ai" style="color:var(--accent-dark);font-weight:600;">support@withsavvy.ai</a>. We will process deletion requests within 30 days, subject to any legal retention requirements.</p>
@@ -751,7 +755,7 @@
                     <li>Multi-factor authentication available on every account</li>
                     <li>Role-based access controls — only authorized employees can access production systems</li>
                     <li>Automated dependency and code-security scanning on every change, plus secret-scanning across our repositories</li>
-                    <li>Bank-level connectivity via Plaid (your banking credentials are never stored by Savvy)</li>
+                    <li>Bank-level connectivity via Plaid, when that feature is available (your banking credentials will never be stored by Savvy)</li>
                 </ul>
                 <div class="callout warning">
                     <div class="callout-icon">⚠️</div>
@@ -789,7 +793,7 @@
                     </div>
                     <div class="right-chip">
                         <div class="right-chip-title">🔌 Revoke Access</div>
-                        <p>Disconnect bank accounts and revoke Plaid access at any time in Settings.</p>
+                        <p>Disconnect bank accounts and revoke Plaid access at any time in Settings, once bank connection is available.</p>
                     </div>
                 </div>
 
@@ -804,7 +808,7 @@
                 <p>If you are located in the European Economic Area or the United Kingdom, the GDPR (and UK GDPR) gives you additional rights, and we process your personal data only where we have a legal basis to do so:</p>
                 <ul>
                     <li><strong>Contract:</strong> most processing — mapping your benefits, matching transactions, sending the reminders you signed up for — is necessary to provide the service you asked us for.</li>
-                    <li><strong>Consent:</strong> connecting a bank account via Plaid, turning on text messages, and forwarding emails to Savvy each happen only after your explicit opt-in, which you can withdraw at any time.</li>
+                    <li><strong>Consent:</strong> connecting a bank account via Plaid (not available in this version of Savvy), turning on text messages, and forwarding emails to Savvy each happen only after your explicit opt-in, which you can withdraw at any time.</li>
                     <li><strong>Legitimate interests:</strong> securing the service, preventing abuse, and understanding aggregate usage — always balanced against your rights.</li>
                 </ul>
                 <p>In addition to the rights listed above, you may object to processing based on legitimate interests, request restriction of processing, and lodge a complaint with your local supervisory authority. Savvy is operated from the United States, and your data is stored and processed there; where data is transferred from the EEA or UK we rely on our processors' standard contractual clauses and equivalent safeguards.</p>
