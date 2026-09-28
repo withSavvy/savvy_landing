@@ -538,8 +538,12 @@
             </div>
             <p class="discovery-more">Seven more on the same card.</p>
             <div class="evidence-total">
-                <div class="evidence-total-label">Reset dates in a year</div>
-                <div class="evidence-total-value"><span class="counter-amount" data-total="38">38</span></div>
+                <!-- One year of the Platinum credits on cards/american_express_platinum.html that reset at least yearly:
+                     hotel 2 x $300 + Resy 4 x $100 + digital entertainment 12 x $25 + lululemon 4 x $75 + Equinox $300
+                     + CLEAR+ $209 + airline fee $200 + Oura $200 + Walmart 12 x $12.95 = $2,664.40, shown rounded down.
+                     The $120 Global Entry / TSA PreCheck credit resets every 4 years, so a yearly figure leaves it out. -->
+                <div class="evidence-total-label">Credit value, every year</div>
+                <div class="evidence-total-value"><span class="counter-amount" data-total="2664">$2,664</span></div>
                 <p class="evidence-context">Miss a window and the credit is gone. <strong>Savvy texts you first.</strong></p>
                 <a href="https://app.withsavvy.ai/?source=landing" class="evidence-cta" data-cta-follow>
                     See what my cards include
@@ -695,8 +699,10 @@
         (function () {
             var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            // The reset-date count ticks up once when it scrolls into view.
+            // The yearly credit total counts up in whole dollars once it scrolls
+            // into view; the last frame always writes data-total itself.
             var counterEl = document.querySelector('.counter-amount');
+            function dollars(n) { return '$' + n.toLocaleString('en-US'); }
             function countUp() {
                 var total = parseInt(counterEl.getAttribute('data-total'), 10);
                 var start = null;
@@ -704,9 +710,9 @@
                     if (start === null) start = ts;
                     var p = Math.min((ts - start) / 1400, 1);
                     var eased = 1 - Math.pow(1 - p, 3);
-                    counterEl.textContent = String(Math.floor(total * eased));
+                    counterEl.textContent = dollars(Math.floor(total * eased));
                     if (p < 1) requestAnimationFrame(frame);
-                    else counterEl.textContent = String(total);
+                    else counterEl.textContent = dollars(total);
                 }
                 requestAnimationFrame(frame);
             }
