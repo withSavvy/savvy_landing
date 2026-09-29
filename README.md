@@ -51,7 +51,7 @@ The CNAME for `withsavvy.ai` is already configured in DNS. To point a different 
 
 ## Repo vs main Savvy app
 
-- **This repo:** marketing site only. Its own repo, its own README, its own deploy (Pages + optional backend).
+- **This repo:** marketing site only. Its own repo, its own README, its own deploy (Cloudflare Workers; see Deploy above). The waitlist backend is not in this repo.
 - **Main app:** [Savvy](https://github.com/Sara3/savvy) — backend + frontend for the product; separate repo(s).
 
 ## See also
