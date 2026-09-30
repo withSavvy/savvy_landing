@@ -788,6 +788,12 @@
                 if (i >= 0 && items[i]) { input.setAttribute('aria-activedescendant', items[i].id); items[i].scrollIntoView({ block: 'nearest' }); }
                 else input.removeAttribute('aria-activedescendant');
             }
+            // The hero submit (go) and the card-pick CTAs (syncCtas) both
+            // navigate to a URL built here, so js/utm-passthrough.js cannot
+            // cover them: the submit handler never reads the form's hidden
+            // inputs, and syncCtas() rewrites the follow-link hrefs on every
+            // pick. Forward the same four UTM params it forwards.
+            var FORWARDED_UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
             function appUrl() {
                 var target = new URL(APP_ORIGIN);
                 target.searchParams.set('source', 'landing');
@@ -797,6 +803,10 @@
                     // knows the single-slug hand-off still adds that one.
                     target.searchParams.set('card', picks[0].slug);
                 }
+                var here = new URLSearchParams(window.location.search);
+                FORWARDED_UTM_KEYS.forEach(function (key) {
+                    if (here.has(key)) target.searchParams.set(key, here.get(key));
+                });
                 return target;
             }
             function syncCtas() {

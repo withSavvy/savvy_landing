@@ -1,6 +1,10 @@
 // Forwards UTM params from this page's URL onto every app.withsavvy.ai link
 // and the hero audit form, so they survive the cross-origin click-through
 // (sessionStorage written here never reaches app.withsavvy.ai).
+// On index.html the hero form's submit handler and the card-pick CTAs build
+// their URLs in appUrl(), which forwards the same keys itself: that handler
+// never reads the hidden inputs added below, and syncCtas() overwrites the
+// follow-link hrefs this script sets.
 (function () {
     'use strict';
 

@@ -1,8 +1,9 @@
 // Standalone node test for buildForwardedHref — no test framework, no
-// package.json in this repo. Run with: node js/utm-passthrough.test-manual.js
+// package.json in this repo. Run with: node tests/utm-passthrough.test-manual.js
+// Kept out of js/ because .assetsignore publishes everything under /js/.
 'use strict';
 
-var buildForwardedHref = require('./utm-passthrough.js').buildForwardedHref;
+var buildForwardedHref = require('../js/utm-passthrough.js').buildForwardedHref;
 
 var cases = [
     {
