@@ -27,4 +27,4 @@ Note: these are full-page renders (visual-regression evidence, identical above t
 
 ## Production domain
 
-Canonical URLs, `sitemap.xml`, and `robots.txt` use **`https://withsavvy.ai`** (apex; verified live 2026-07-01 — `www.withsavvy.ai` has no DNS record).
+Canonical URLs, `sitemap.xml`, and `robots.txt` use **`https://heygrail.ai`** (apex; marketing domain is heygrail.ai).
