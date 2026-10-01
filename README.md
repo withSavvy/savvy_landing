@@ -2,7 +2,7 @@
 
 **Marketing site for Savvy** — static landing page. Loosely connected to the main [Savvy](https://github.com/Sara3/savvy) app (credit card benefit tracker); this repo is **standalone** and has its **own GitHub repository**.
 
-- **Live site (Cloudflare Workers):** https://withsavvy.ai/
+- **Live site (Cloudflare Workers):** https://heygrail.ai/
 - **Waitlist API (Render):** the waitlist server lives in a local-only `backend/` checkout that is NOT tracked in this repo (removed as a submodule in `01c8853`; see `.gitignore`). Static pages call the production API at `https://api.withsavvy.ai` via `js/savvy-api-config.js`.
 
 ## What’s in this repo
@@ -30,7 +30,7 @@
 
 ### Cloudflare Workers (static site)
 
-Production (`https://withsavvy.ai/`) is served by Cloudflare Workers, not GitHub Pages. `wrangler.jsonc` defines two environments:
+Production (`https://heygrail.ai/`) is served by Cloudflare Workers, not GitHub Pages. `wrangler.jsonc` defines two environments:
 
 - `staging` → `savvylanding-staging`
 - `production` → `savvylanding`
@@ -43,7 +43,7 @@ npx wrangler@4 deploy --env production
 
 ### Custom domain (e.g. Clark)
 
-The CNAME for `withsavvy.ai` is already configured in DNS. To point a different custom domain at this Worker, add it in the Cloudflare dashboard under **Workers & Pages → savvylanding → Settings → Domains & Routes**.
+The CNAME for `heygrail.ai` is already configured in DNS. To point a different custom domain at this Worker, add it in the Cloudflare dashboard under **Workers & Pages → savvylanding → Settings → Domains & Routes**.
 
 ### Backend (waitlist API)
 
