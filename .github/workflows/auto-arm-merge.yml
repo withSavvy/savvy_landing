@@ -280,3 +280,70 @@ jobs:
           else
             echo "::warning::Could not read auto-merge state back after arming — the arm call returned 0 but its EFFECT IS UNVERIFIED. Treating as armed; check the PR manually if it does not merge."
           fi
+
+  # NEW JOB — the SHA-bound HUMAN OVERRIDE of the binding `opus-verdict-recorded`
+  # status. [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
+  #
+  # gate.yml's record-opus-verdict job posts `opus-verdict-recorded` from
+  # opus-gate's binding verdict: success only for an Opus PASS or a dependabot
+  # PR; failure for everything else, including a reviewer crash and a CI-surface
+  # edit. Once that context is a required status check (ruleset 23711370), this
+  # job is how a human gets a PR past a failing/missing verdict without
+  # re-running the gate: an allowlisted human adds `human-approved`, and THIS job
+  # (never gate.yml) records "human-override by <login> for <sha7>" on that exact
+  # commit.
+  #
+  #  * REMOVING LABELS NEVER RELEASES. There is deliberately no `unlabeled`
+  #    handling anywhere near this status.
+  #  * Verified, not trusted: .github/scripts/verify_human_approved.sh (the same
+  #    check merge-guard.yml runs inline; a drift test keeps them identical)
+  #    reads the NEWEST `labeled human-approved` event via the issue-events API
+  #    and requires a non-[bot] actor on the TIER_B_RELEASE_ACTORS allowlist.
+  #    Any API error means no override (fail-closed). TIER_B_RELEASE_ACTORS must
+  #    be set on this repo (or org-wide); unset matches no real actor, so nothing
+  #    would verify.
+  #  * SHA-bound: the status is posted only if the PR's live head still equals
+  #    the head of the labeling event. A later push has no override and needs a
+  #    fresh approval (re-add the label).
+  #  * Posted with GITHUB_TOKEN under this job's own `statuses: write`, so the
+  #    creator is github-actions[bot] (app 15368), the only creator the
+  #    required-context pin accepts.
+  #
+  # SECURITY: same header invariant as the job above — this job runs with the
+  # BASE repo's token on a PR event, so it checks out the BASE sha only (never
+  # the PR head), reads the PR exclusively through the API, and takes every PR
+  # value through `env:` (never interpolated into the `run:` line). Own
+  # non-cancelling concurrency group: a queued override must not be cancelled
+  # by a later label event.
+  record-human-opus-override:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.action == 'labeled' && github.event.label.name == 'human-approved'
+    # This repo's runner convention (`vars.CI_RUNNER || 'ubuntu-latest'`), NOT
+    # savvy-backend's CI_RUNNER_OVERFLOW chain: here CI_RUNNER_OVERFLOW points at
+    # the scarce self-hosted pool (see merge-guard.yml's runs-on rationale), and
+    # an override is a few API calls that must never queue behind it.
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      statuses: write
+    concurrency:
+      group: record-human-opus-override-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout base ref (trusted) — NOT the PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Record human override of opus-verdict-recorded if an allowlisted human approved
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL_NAME: ${{ github.event.label.name }}
+          TIER_B_RELEASE_ACTORS: ${{ vars.TIER_B_RELEASE_ACTORS }}
+        run: .github/scripts/record_human_opus_override.sh

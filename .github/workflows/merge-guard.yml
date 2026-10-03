@@ -59,6 +59,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          TIER_B_RELEASE_ACTORS: ${{ vars.TIER_B_RELEASE_ACTORS }}
         run: |
           set -uo pipefail
 
@@ -132,16 +133,108 @@ jobs:
           # is a way for a human to say "I reviewed this myself" and have it
           # stick. gate.yml never adds or removes `human-approved`, so unlike
           # removing `needs-human-review` by hand, no re-run can undo it.
+          # [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
+          # PRESENCE of the label used to be treated as proof a human reviewed
+          # the PR (this repo accepted it verbatim). It is not: anyone with
+          # label-write access can add it, and since 2026-10-02 `human-approved`
+          # is ALSO the SHA-bound override of the required `opus-verdict-recorded`
+          # status and the only way past the CI-surface floor below. So it is
+          # honoured only when an allowlisted, non-bot human added it — the same
+          # check the override job runs (.github/scripts/verify_human_approved.sh).
+          #
+          # KNOWN LIMIT: a caller holding the allowlisted human's PAT is
+          # indistinguishable from that human; this closes forgery by other
+          # logins and by bots, not a stolen credential. The allowlist is the
+          # TIER_B_RELEASE_ACTORS repo/org variable; UNSET falls back to the repo
+          # OWNER login, which matches no real actor, so nothing verifies (and
+          # `human-approved` releases nothing) until it is set.
+          #
+          # This function is ALSO shipped as .github/scripts/verify_human_approved.sh.
+          # merge-guard has no checkout step (and must not grow one: it is a
+          # required label-only check on the hosted pool), so it keeps this inline
+          # copy. .github/scripts/__tests__/verify_human_approved.test.sh asserts
+          # the two bodies are byte-identical (modulo indentation) — edit BOTH or
+          # that test fails.
+          verified_human_approved_adder() {
+            local allow raw login login_lc entry
+            allow="${TIER_B_RELEASE_ACTORS:-${GITHUB_REPOSITORY%%/*}}"
+
+            if ! raw=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/events" \
+                         --paginate --jq '.[] | select(.event=="labeled" and .label.name=="human-approved") | .actor.login' 2>&1); then
+              echo "::warning::Could not read issue events to verify who added 'human-approved' — treating it as unverifiable (fail-closed): $raw"
+              return 1
+            fi
+
+            # Multiple 'labeled human-approved' events can exist (label
+            # removed and re-added); the newest one is what currently governs,
+            # and the events API returns them oldest-first, so the last line
+            # is the most recent — same "live, not the triggering snapshot"
+            # rule as read_live_labels() above.
+            login=$(printf '%s\n' "$raw" | tail -n1)
+            if [ -z "$login" ] || [ "$login" = "null" ]; then
+              echo "::warning::'human-approved' is present but no matching 'labeled' event was found for it — treating it as unverifiable (fail-closed)."
+              return 1
+            fi
+
+            login_lc=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
+            case "$login_lc" in
+              *"[bot]")
+                echo "::warning::'human-approved' was added by '$login', a bot identity — treating it as unverifiable (fail-closed): a bot does not assert human review."
+                return 1
+                ;;
+            esac
+            for entry in $(printf '%s' "$allow" | tr ',' ' ' | tr '[:upper:]' '[:lower:]'); do
+              if [ "$entry" = "$login_lc" ]; then
+                echo "'human-approved' was added by '$login', on the tier-b release allowlist ('$allow')."
+                export HUMAN_APPROVED_ADDER="$login"
+                return 0
+              fi
+            done
+            echo "::warning::'human-approved' was added by '$login', who is NOT on the tier-b release allowlist ('$allow') — treating it as unverifiable (fail-closed)."
+            return 1
+          }
+
           if has 'human-approved'; then
-            echo "PR carries 'human-approved' — a human has reviewed this and cleared it."
-            echo "Advisory holds ('reviewing', 'needs-human-review') are ignored."
-            exit 0
+            if verified_human_approved_adder; then
+              echo "PR carries 'human-approved' — a human has reviewed this and cleared it."
+              echo "Advisory holds ('reviewing', 'needs-human-review') are ignored."
+              exit 0
+            fi
+            echo "::error::'human-approved' is present but its adder could not be verified — treating it as ABSENT (fail-closed)."
           fi
 
           if has 'reviewing|needs-human-review'; then
             echo "::error::PR is on hold ('reviewing' or 'needs-human-review')."
             echo "If the gate applied this because its reviewer could not run (429 usage cap, 401 auth, crash), the label will NOT clear on its own until a review actually succeeds."
             echo "To merge anyway after reviewing it yourself, add the 'human-approved' label."
+            exit 1
+          fi
+
+          # [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
+          # LIVE CI-SURFACE FLOOR. savvy_landing had no CI-surface check in this
+          # required job: gate.yml's review/opus-gate compute it, but they are NOT
+          # required and start only after the required checks finish, and
+          # auto-arm-merge.yml labels a brick-risk PR `do-not-merge` only on
+          # opened/ready_for_review/labeled — never on a later push. So a PR could
+          # add or change a workflow after opening and merge unlabeled.
+          #
+          # That matters more now: the binding `opus-verdict-recorded` status is
+          # posted by github-actions[bot] from gate.yml. A same-repo PR that edits
+          # .github/workflows could post that status itself, so this required check
+          # must refuse CI-surface PRs unless a VERIFIED human approved them (the
+          # `human-approved` branch above has already exited 0 in that case). The
+          # file list is read live from the API, never from the event payload.
+          #
+          # RESIDUAL (documented, same as savvy-backend): this job runs from the PR's
+          # own merge ref, so a PR that edits merge-guard.yml itself is judged by its
+          # own copy. The backstops are the SHA-bound human override and CODEOWNERS /
+          # branch rules, not this file.
+          if ! PR_FILES=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename' 2>&1); then
+            echo "::error::Could not read live PR file list — refusing to clear (fail-closed): $PR_FILES"
+            exit 1
+          fi
+          if printf '%s\n' "$PR_FILES" | grep -Eq '^[.]github/(workflows|scripts)/|^[.]claude/scripts/'; then
+            echo "::error::PR touches CI-surface paths (.github/workflows/, .github/scripts/, .claude/scripts/) — human-review floor, evaluated here so it cannot be outrun by a slower job. Add 'human-approved' (as an allowlisted human) after reviewing this diff to merge."
             exit 1
           fi
 

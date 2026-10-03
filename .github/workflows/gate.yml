@@ -21,6 +21,24 @@ name: Gate
 # Required-check contexts preserved:
 #   "Gitleaks (secret scan)"   workflow-safety   review   opus-gate
 #
+# BINDING OPUS VERDICT [2026-10-02, savvy-backend#1595 / tracking #1239]:
+# `review` and `opus-gate` finish AFTER the checks branch protection waits on
+# (they `needs:` tier-0), and every infra arm of their enforcement steps exits 0
+# by design, so a reviewer crash concluded the job `success` and a PR could (and
+# did, on savvy-backend#1595) auto-merge before, or without, a binding Opus
+# verdict. The merge-gating signal is now the commit status
+# `opus-verdict-recorded`, posted by the `record-opus-verdict` job at the bottom
+# of this file from opus-gate's `binding_verdict` output (success ONLY for an
+# Opus PASS or a dependabot PR; failure for a crash, a floor block, a
+# CI-surface edit, a cancelled run, or anything unrecognised). `review` and
+# `opus-gate` now conclude FAILURE unless the reviewer actually ran clean.
+# Rollout is SHADOW first: the status is posted on every PR but is not a
+# required context until an admin adds {"context":"opus-verdict-recorded",
+# "integration_id":15368} to ruleset 23711370. The escape hatches are a re-run
+# of the failed jobs, or an allowlisted human adding `human-approved`
+# (auto-arm-merge.yml's record-human-opus-override job, SHA-bound). REMOVING
+# LABELS NEVER RELEASES. See .github/scripts/gate_binding_verdict.sh.
+#
 # Type-C hardening (propagated from backend, 2026-06-27):
 #   gitleaks: exit-17 pins real leaks (Type B); all other non-zero exit codes are
 #     infra crashes (Type C) — routed through gate_typed_check.sh + gate_infra_escalate.sh.
@@ -319,6 +337,11 @@ jobs:
     outputs:
       fixed_summary: ${{ steps.emit_context.outputs.fixed_summary }}
       residual: ${{ steps.emit_context.outputs.residual }}
+      # [savvy-backend#1595 / #1239] Set by the final `conclude` step ONLY when
+      # the reviewer failed because it could not RUN (an infra token). Read by
+      # opus-gate's floor so a reviewer outage is not a FLOOR block. See
+      # .github/scripts/gate_review_conclude.sh.
+      infra_token: ${{ steps.conclude.outputs.infra_token }}
 
     steps:
       # Prefer the savvy-gate-bot App installation token over Sara's personal
@@ -520,8 +543,13 @@ jobs:
               SONNET_RESIDUAL: <comma-separated list of remaining unresolved issues, each prefixed with its kit tag e.g. "[security] ...", or NONE>
 
       # ── ADD LABEL after Sonnet fix pass ─────────────────────────────────
+      # [2026-10-02, savvy-backend#1595 / #1239] Only burn the one-shot fixer when
+      # the fix pass actually RAN (it wrote an execution file). A crash before
+      # Claude started (installation 403, install failure) used to stamp
+      # gate:fixed-sonnet anyway, so the retry was forced onto the review-only
+      # path and the fixer never got its pass.
       - name: Mark Sonnet fix used (label gate:fixed-sonnet)
-        if: steps.floor_check.conclusion == 'success' && steps.loop_guard.outputs.review_only == 'false'
+        if: steps.floor_check.conclusion == 'success' && steps.loop_guard.outputs.review_only == 'false' && steps.claude_review.outputs.execution_file != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -585,14 +613,52 @@ jobs:
             Then:
               SONNET_RESIDUAL: <remaining issues, each prefixed with its kit tag e.g. "[security] ...", or NONE>
 
+      # ── CRASH DIAGNOSTICS (structural, spoof-safe) ───────────────────────
+      # [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
+      # Written BEFORE enforcement so gate_check_ran.py's no-execution-file arm can
+      # tell "the action step itself crashed before Claude ran" (installation 403,
+      # install failure -> NO_EXEC_FILE_INFRA / INSTALLATION_RATE_LIMIT_INFRA) from
+      # "no evidence at all" (FAIL_HARD). Every value is interpolated from GitHub's
+      # own steps.<id>.outcome context (the pre-continue-on-error result) or our own
+      # probe script — never from model text — so a PR cannot spoof a crash.
+      # When the reviewer crashed AND wrote no execution file, probe the SAME REST
+      # bucket class with the SAME App token: 32 of the 34 #1239 crashes were a
+      # burst drain of installation 146412380 that /rate_limit cannot see.
+      - name: Capture reviewer diagnostics
+        id: review_diag
+        if: always()
+        continue-on-error: true
+        env:
+          FIX_OUTCOME: ${{ steps.claude_review.outcome }}
+          REVIEW_ONLY_OUTCOME: ${{ steps.claude_review_only.outcome }}
+          REVIEW_EXEC_FILE: ${{ steps.claude_review.outputs.execution_file || steps.claude_review_only.outputs.execution_file }}
+          APP_TOKEN: ${{ steps.app_token.outputs.token }}
+        run: |
+          set -uo pipefail
+          DIAG="${RUNNER_TEMP}/review-diag.txt"
+          {
+            echo "schema=gate-reviewer-diag-v3"
+            echo "fix_pass_outcome=${FIX_OUTCOME}"
+            echo "review_only_pass_outcome=${REVIEW_ONLY_OUTCOME}"
+            echo "execution_file_output=${REVIEW_EXEC_FILE}"
+          } > "$DIAG"
+          if [ -z "${REVIEW_EXEC_FILE}" ] && { [ "${FIX_OUTCOME}" = "failure" ] || [ "${REVIEW_ONLY_OUTCOME}" = "failure" ]; }; then
+            bash .github/scripts/gate_probe_installation.sh >> "$DIAG" || true
+          fi
+          echo "diag_file=$DIAG" >> "$GITHUB_OUTPUT"
+
       # ── FAIL-CLOSED ENFORCEMENT ──────────────────────────────────────────
       # AUTH_FAIL and crash paths route through gate_infra_escalate.sh (Type C):
       # distinct gate-infra-error label + deduped tracking issue + "couldn't verify" comment.
       - name: Enforce review actually ran
+        id: enforce_review_ran
         if: always()
         env:
           GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
           REVIEW_EXEC_FILE: ${{ steps.claude_review.outputs.execution_file || steps.claude_review_only.outputs.execution_file }}
+          # Structural crash evidence for the no-execution-file arm (see the
+          # capture step above); empty if the capture step itself failed.
+          REVIEW_DIAG_FILE: ${{ steps.review_diag.outputs.diag_file }}
         run: |
           set -uo pipefail
           FLOOR_BLOCKED="${{ steps.floor_check.outputs.floor_blocked || 'false' }}"
@@ -608,14 +674,25 @@ jobs:
             "" \
             "" \
             "${REVIEW_EXEC_FILE}" \
-            "$EDITS_WF")
+            "$EDITS_WF" \
+            "${REVIEW_DIAG_FILE:-}")
           echo "gate_check_ran -> $TOKEN (edits_ci=$EDITS_WF)"
+          # Consumed by the final `conclude` step (see its comment).
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
           # ROUTE_HUMAN/AUTH_FAIL/* are a "couldn't verify" outcome, NOT a code
           # rejection — they exit 0 so this check doesn't sit PERMANENTLY RED (the
           # reviewer will never retroactively "run" on a stale PR). Safety instead
           # comes from the needs-human-review label, which merge-guard.yml (a
           # separate REQUIRED check) and auto-arm-merge.yml both hard-block on.
           # [wo:gate-reviewer-infra-nonblocking-landing]
+          # [2026-10-02, savvy-backend#1595 / tracking #1239] AMENDMENT to the "exit 0
+          # so the check doesn't sit permanently red" rationale above: the arms
+          # below STILL exit 0 (escalation, labels and comments are unchanged),
+          # but this job no longer concludes success afterwards. Its final
+          # `conclude` step (gate_review_conclude.sh) fails the job on every token
+          # except PASS. "Permanently red" is the intended state of a PR nobody has
+          # verified: the way out is a re-run once the cause clears, or an
+          # allowlisted human adding `human-approved` — never label removal.
           case "$TOKEN" in
             PASS)        echo "Sonnet review ran and succeeded." ; exit 0 ;;
             ROUTE_HUMAN)
@@ -649,13 +726,25 @@ jobs:
                            echo "::error::review: needs-human-review is NOT present after a write that reported success — the only backstop on this path is missing. Failing loud."
                            exit 1
                          fi
-                         echo "::warning::review: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
+                         echo "::warning::review: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
-                         echo "::warning::review: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging, not a permanent block. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
+                         echo "::warning::review: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
+            INSTALLATION_RATE_LIMIT_INFRA)
+                         # The reset time comes from the live 403 probe (the only
+                         # read that sees the burst drain).
+                         RESET_EPOCH=$(grep -m1 '^installation_probe_reset_epoch=' "${REVIEW_DIAG_FILE}" 2>/dev/null | cut -d= -f2)
+                         if [[ "$RESET_EPOCH" =~ ^[0-9]+$ ]]; then
+                           RESET_HUMAN=$(date -u -d "@${RESET_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown (could not parse epoch '${RESET_EPOCH}')")
+                         else
+                           RESET_HUMAN="unknown (no reset time recorded)"
+                         fi
+                         bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
+                           --detail "gate App installation hit GitHub's own API rate limit (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
+                         echo "::warning::review: GitHub App installation rate limit exhausted (resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer could not run (no result / crash; token=$TOKEN)" || true
-                         echo "::warning::review: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
+                         echo "::warning::review: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
           esac
 
       # ── EMIT CONTEXT FOR DOWNSTREAM ──────────────────────────────────────
@@ -738,6 +827,23 @@ jobs:
             gh pr comment "$PR_NUMBER" --body-file /tmp/body_sonnet.md >/dev/null 2>&1 || true
           fi
 
+      # ── CONCLUDE (MUST stay the LAST step of this job) ───────────────────
+      # [2026-10-02, savvy-backend#1595 / tracking #1239] Every infra arm of
+      # "Enforce review actually ran" exits 0 by design, so a reviewer crash used
+      # to conclude this job SUCCESS. This step makes the job conclude FAILURE
+      # unless the reviewer actually ran clean (PASS). It also publishes
+      # `infra_token` for opus-gate's floor exemption. Not neutral: Actions jobs
+      # cannot conclude neutral and GitHub treats neutral/skipped as passing for
+      # required checks. Frozen by .github/scripts/__tests__/gate_binding_conventions.test.sh.
+      - name: Conclude (review fails unless the reviewer ran clean)
+        id: conclude
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          FLOOR_OUTCOME: ${{ steps.floor_check.conclusion }}
+          ENFORCE_TOKEN: ${{ steps.enforce_review_ran.outputs.token }}
+        run: bash .github/scripts/gate_review_conclude.sh
+
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 2  —  'opus-gate'  Opus FINAL DECIDER + FIXER #2  (BINDING terminal gate)
 # Needs: [review, gitleaks, workflow-safety]
@@ -749,6 +855,14 @@ jobs:
     if: (always()) && github.actor != 'dependabot[bot]'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
+    outputs:
+      # [savvy-backend#1595 / tracking #1239] The BINDING verdict, one of
+      # PASS | INFRA:<TOKEN> | ROUTE_HUMAN | FLOOR | FAIL
+      # (see .github/scripts/gate_binding_verdict.sh). Written by the always()
+      # `binding` step so it survives a failed job; consumed by
+      # record-opus-verdict, which turns it into the required status
+      # `opus-verdict-recorded`.
+      binding_verdict: ${{ steps.binding.outputs.binding_verdict }}
 
     steps:
       # Prefer the savvy-gate-bot App installation token over Sara's personal
@@ -770,10 +884,15 @@ jobs:
       # ── HARD-BLOCK FLOOR ─────────────────────────────────────────────────
       # Absolute: same floor as Tier 1. Opus CANNOT override this.
       # gh pr view calls wrapped in gh_retry.sh; persistent failure => gate_infra_escalate.
+      # Also blocks if the 'review' job itself failed — EXCEPT when review failed
+      # because it could not RUN (infra_token, below).
       - name: Hard-block floor check
         id: floor_check
         env:
           GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
+          # [2026-10-02, savvy-backend#1595 / #1239] Non-empty ONLY when the review
+          # job failed because the reviewer could not RUN (gate_review_conclude.sh).
+          REVIEW_INFRA_TOKEN: ${{ needs.review.outputs.infra_token }}
         run: |
           set -uo pipefail
           PR_NUMBER="${{ github.event.pull_request.number }}"
@@ -792,8 +911,22 @@ jobs:
           fi
 
           # Tier-1 review failed (includes its own floor-blocked case) or was skipped
+          #
+          # [2026-10-02, savvy-backend#1595 / tracking #1239] EXCEPT a review that
+          # failed because the reviewer could not RUN (an infra token: usage cap,
+          # installation rate limit, install failure, ...). That is not a floor
+          # violation, it is a missing Tier-1 verdict, and review now concludes
+          # FAILURE on every such crash (it used to conclude success). Without
+          # this exemption every reviewer outage would be an unfixable FLOOR
+          # block and Opus — the binding decider — would never run. The tier-0
+          # floor above and the CI-surface floor below are unaffected; ROUTE_HUMAN,
+          # skipped, cancelled and an unrecognised token stay blocks. Opus has no
+          # decide step in this repo: it always runs when the floor passes, on its
+          # own review of the diff.
           REVIEW_RESULT="${{ needs.review.result }}"
-          if [ "$REVIEW_RESULT" = "failure" ] || [ "$REVIEW_RESULT" = "skipped" ] || [ "$REVIEW_RESULT" = "cancelled" ]; then
+          if [ "$REVIEW_RESULT" = "failure" ] && printf '%s' "${REVIEW_INFRA_TOKEN:-}" | grep -Eq '^[A-Z_]{3,60}$'; then
+            echo "::notice::review failed because the reviewer could not run (${REVIEW_INFRA_TOKEN}) — not a floor block; Opus runs on its own."
+          elif [ "$REVIEW_RESULT" = "failure" ] || [ "$REVIEW_RESULT" = "skipped" ] || [ "$REVIEW_RESULT" = "cancelled" ]; then
             FLOOR_BLOCKED=true
             FLOOR_REASON="${FLOOR_REASON:+$FLOOR_REASON, }review=$REVIEW_RESULT"
           fi
@@ -833,6 +966,16 @@ jobs:
       # Landing-specific HIGH triggers: js/ts/json/yml/yaml/sh/html/config files.
       # Type C: a gh API blip means we couldn't classify the diff — retry 2x,
       # then infra-escalate and fail-closed (never auto-pass the risk tier).
+      #
+      # [2026-10-02, savvy-backend#1595 / tracking #1239] BINDING OPUS, NO FREE
+      # PASS FOR DOCS. A docs-only diff used to report tier=docs, which skipped the
+      # Opus review and let opus-gate conclude success. Merge now waits on the
+      # Opus verdict (required status opus-verdict-recorded), and savvy_landing has
+      # no triage `trivial` class, so there is NO by-design skip: a docs-only diff
+      # still reports tier=high and gets the (cheap, few-turn) Opus review. The docs
+      # classification is kept as `docs_only` for the log only. gate_binding_verdict.sh
+      # independently maps any non-high tier to FAIL, so this is not the only
+      # line of defence.
       - name: Check risk tier
         id: risk_tier
         if: steps.floor_check.conclusion == 'success'
@@ -868,25 +1011,14 @@ jobs:
             fi
           done <<< "$FILES"
 
+          echo "tier=high" >> "$GITHUB_OUTPUT"
           if [ "$ALL_DOCS" = false ]; then
-            echo "tier=high" >> "$GITHUB_OUTPUT"
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
             echo "Opus full review required."
           else
-            echo "tier=docs" >> "$GITHUB_OUTPUT"
-            echo "Docs-only diff — Opus review skipped."
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "Docs-only diff — Opus review still REQUIRED (binding Opus verdict; no docs skip)."
           fi
-
-      # Auto-pass for docs-only diffs
-      - name: Auto-pass docs-only diff
-        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'docs'
-        env:
-          GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT }}
-        run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          gh pr comment "$PR_NUMBER" \
-            --body "**opus-gate:** docs-only diff — full Opus review skipped. ✅" \
-            || true
-          echo "Docs-only auto-pass complete."
 
       # ── LOOP GUARD (label-gated ONE-SHOT cap) ───────────────────────────
       - name: Detect loop-guard (label-gated one-shot)
@@ -997,8 +1129,11 @@ jobs:
             Output nothing after that line.
 
       # ── ADD LABEL after Opus fix pass ────────────────────────────────────
+      # [2026-10-02, savvy-backend#1595 / #1239] Only after the fix pass actually
+      # RAN (wrote an execution file). #1595 got gate:fixed-opus from a pass that
+      # crashed at setup, so its retry could never have used the one-shot fixer.
       - name: Mark Opus fix used (label gate:fixed-opus)
-        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.loop_guard.outputs.review_only == 'false'
+        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.loop_guard.outputs.review_only == 'false' && steps.opus_review.outputs.execution_file != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -1035,6 +1170,33 @@ jobs:
               OPUS_GATE_VERDICT: PASS
               OPUS_GATE_VERDICT: FAIL
 
+      # ── CRASH DIAGNOSTICS (structural, spoof-safe) ───────────────────────
+      # Mirror of the review job's "Capture reviewer diagnostics" step (see its
+      # comment): feeds gate_check_ran.py's no-execution-file arm and the live
+      # installation 403 probe. [2026-10-02, savvy-backend#1595 / tracking #1239]
+      - name: Capture Opus reviewer diagnostics
+        id: opus_diag
+        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && always()
+        continue-on-error: true
+        env:
+          FIX_OUTCOME: ${{ steps.opus_review.outcome }}
+          REVIEW_ONLY_OUTCOME: ${{ steps.opus_review_only.outcome }}
+          OPUS_EXEC_FILE: ${{ steps.opus_review.outputs.execution_file || steps.opus_review_only.outputs.execution_file }}
+          APP_TOKEN: ${{ steps.app_token.outputs.token }}
+        run: |
+          set -uo pipefail
+          DIAG="${RUNNER_TEMP}/opus-review-diag.txt"
+          {
+            echo "schema=gate-reviewer-diag-v3"
+            echo "fix_pass_outcome=${FIX_OUTCOME}"
+            echo "review_only_pass_outcome=${REVIEW_ONLY_OUTCOME}"
+            echo "execution_file_output=${OPUS_EXEC_FILE}"
+          } > "$DIAG"
+          if [ -z "${OPUS_EXEC_FILE}" ] && { [ "${FIX_OUTCOME}" = "failure" ] || [ "${REVIEW_ONLY_OUTCOME}" = "failure" ]; }; then
+            bash .github/scripts/gate_probe_installation.sh >> "$DIAG" || true
+          fi
+          echo "diag_file=$DIAG" >> "$GITHUB_OUTPUT"
+
       # ── FAIL-CLOSED ENFORCEMENT ──────────────────────────────────────────
       # AUTH_FAIL and crash paths route through gate_infra_escalate.sh (Type C):
       # distinct gate-infra-error label + deduped tracking issue + "couldn't verify" comment.
@@ -1044,6 +1206,9 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
           OPUS_EXEC_FILE: ${{ steps.opus_review.outputs.execution_file || steps.opus_review_only.outputs.execution_file }}
+          # Structural crash evidence for the no-execution-file arm (see the
+          # capture step above); empty if the capture step itself failed.
+          OPUS_DIAG_FILE: ${{ steps.opus_diag.outputs.diag_file }}
         run: |
           set -uo pipefail
           PR_NUMBER="${{ github.event.pull_request.number }}"
@@ -1053,7 +1218,8 @@ jobs:
             "" \
             "" \
             "${OPUS_EXEC_FILE}" \
-            "$EDITS_WF")
+            "$EDITS_WF" \
+            "${OPUS_DIAG_FILE:-}")
           echo "gate_check_ran -> $TOKEN (edits_ci=$EDITS_WF)"
           echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
           # ROUTE_HUMAN/AUTH_FAIL/* are a "couldn't verify" outcome, NOT a code
@@ -1067,6 +1233,14 @@ jobs:
           # fail-closed exit 1, or (b) have its needs-human-review label
           # stripped by the clean-pass label-clear step in this same run.
           # [wo:gate-reviewer-infra-nonblocking-landing]
+          # [2026-10-02, savvy-backend#1595 / tracking #1239] AMENDMENT to the "exit 0
+          # so the check doesn't sit permanently red" rationale above: the arms
+          # below STILL exit 0 (escalation, labels and comments are unchanged),
+          # but this job no longer concludes success afterwards. Its final
+          # `binding` + `conclude` steps (gate_binding_verdict.sh) fail the job on
+          # every token except PASS. "Permanently red" is the intended state of a PR
+          # nobody has verified: the way out is a re-run once the cause clears, or
+          # an allowlisted human adding `human-approved` — never label removal.
           case "$TOKEN" in
             PASS)        echo "Opus review ran and succeeded." ; exit 0 ;;
             ROUTE_HUMAN)
@@ -1100,13 +1274,25 @@ jobs:
                            echo "::error::opus-gate: needs-human-review is NOT present after a write that reported success — the only backstop on this path is missing. Failing loud."
                            exit 1
                          fi
-                         echo "::warning::opus-gate: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
+                         echo "::warning::opus-gate: couldn't run to a trustworthy conclusion (workflow-edit or incomplete review) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
-                         echo "::warning::opus-gate: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging, not a permanent block. Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
+                         echo "::warning::opus-gate: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
+            INSTALLATION_RATE_LIMIT_INFRA)
+                         # The reset time comes from the live 403 probe (the only
+                         # read that sees the burst drain).
+                         RESET_EPOCH=$(grep -m1 '^installation_probe_reset_epoch=' "${OPUS_DIAG_FILE}" 2>/dev/null | cut -d= -f2)
+                         if [[ "$RESET_EPOCH" =~ ^[0-9]+$ ]]; then
+                           RESET_HUMAN=$(date -u -d "@${RESET_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown (could not parse epoch '${RESET_EPOCH}')")
+                         else
+                           RESET_HUMAN="unknown (no reset time recorded)"
+                         fi
+                         bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
+                           --detail "gate App installation hit GitHub's own API rate limit (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
+                         echo "::warning::opus-gate: GitHub App installation rate limit exhausted (resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; the binding verdict is INFRA and opus-verdict-recorded reads failure (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer could not run (no result / crash; token=$TOKEN)" || true
-                         echo "::warning::opus-gate: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging, not a permanent block." ; exit 0 ;;
+                         echo "::warning::opus-gate: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
           esac
 
       # ── VERDICT ENFORCEMENT ──────────────────────────────────────────────
@@ -1119,6 +1305,7 @@ jobs:
       # own `*` -> exit 1 — silently recreating the exact permanent-red bug this
       # fix removes, via a different step. [wo:gate-reviewer-infra-nonblocking-landing]
       - name: Enforce Opus verdict (binding terminal gate)
+        id: enforce_verdict
         if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.enforce_opus_ran.outputs.token == 'PASS' && success()
         env:
           GH_TOKEN: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT || secrets.GITHUB_TOKEN }}
@@ -1224,3 +1411,107 @@ jobs:
           else
             gh pr comment "$PR_NUMBER" --body-file /tmp/body_opus.md >/dev/null 2>&1 || true
           fi
+
+      # ── BINDING VERDICT + CONCLUDE (these two MUST stay the LAST steps) ───
+      # [2026-10-02, savvy-backend#1595 / tracking #1239] #1595 was bot-merged at
+      # 22:29:20Z; its opus-gate crashed (NO_EXEC_FILE_INFRA) four minutes later
+      # and still concluded `success`, because every infra arm above exits 0 by
+      # design. The arms, escalation, comments and label hygiene above are
+      # deliberately UNCHANGED; these two steps only decide what the JOB
+      # concludes and what the required status sees.
+      #   binding  — pure function of structural step results
+      #              (.github/scripts/gate_binding_verdict.sh), written to the job
+      #              output `binding_verdict` even when the job failed.
+      #   conclude — exit 1 unless the verdict is PASS.
+      # Not neutral: Actions jobs cannot conclude neutral, and GitHub counts
+      # neutral/skipped as passing for required checks. Frozen by
+      # .github/scripts/__tests__/gate_binding_conventions.test.sh.
+      - name: Compute binding verdict
+        id: binding
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          FLOOR_OUTCOME: ${{ steps.floor_check.conclusion }}
+          RISK_TIER: ${{ steps.risk_tier.outputs.tier }}
+          ENFORCE_TOKEN: ${{ steps.enforce_opus_ran.outputs.token }}
+          ENFORCE_VERDICT_OUTCOME: ${{ steps.enforce_verdict.outcome }}
+        run: |
+          set -uo pipefail
+          VERDICT="$(bash .github/scripts/gate_binding_verdict.sh)" || VERDICT=""
+          [ -n "$VERDICT" ] || VERDICT="FAIL"
+          echo "binding_verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+          echo "opus-gate binding verdict: $VERDICT"
+
+      - name: Conclude (opus-gate fails unless the binding verdict is PASS)
+        id: conclude
+        if: always()
+        env:
+          BINDING_VERDICT: ${{ steps.binding.outputs.binding_verdict }}
+        run: |
+          set -uo pipefail
+          if [ "${BINDING_VERDICT:-}" = "PASS" ]; then
+            echo "opus-gate: binding verdict PASS — concluding success."
+            exit 0
+          fi
+          echo "::error::opus-gate: binding verdict '${BINDING_VERDICT:-<missing>}' is not PASS — concluding FAILURE. The opus-verdict-recorded status will read failure. To merge: re-run the failed jobs once the cause clears, or have an allowlisted human review the diff and add 'human-approved'."
+          exit 1
+
+  # ---------------------------------------------------------------------------
+  # record-opus-verdict — turns opus-gate's binding verdict into the commit
+  # status `opus-verdict-recorded` on the PR HEAD sha.
+  #
+  # [2026-10-02, savvy-backend#1595 / tracking #1239] SHADOW MODE: this status is
+  # posted on every PR but is NOT yet a required context. After ~48h of audit
+  # (every head sha has one; every would-block is a real FAIL, crash or
+  # CI-surface edit) an admin adds {"context":"opus-verdict-recorded",
+  # "integration_id":15368} to ruleset 23711370; from then on GitHub itself holds
+  # every arm path (native auto-merge, resweeper --auto, manual) at "Expected"
+  # until a verdict arrives. Nothing here arms, disarms or labels anything.
+  #
+  #  * `!cancelled()`, NOT `always()` — see the concurrency header; a superseded
+  #    run must die. A job-level skip of opus-gate (dependabot) still reaches
+  #    this job and posts its by-design success.
+  #  * Display name "record opus verdict" never equals the context
+  #    `opus-verdict-recorded`, so this job's own check-run can never satisfy it.
+  #  * Job-scoped permissions: statuses:write is held by this job (and by
+  #    auto-arm-merge.yml's record-human-opus-override) and NOWHERE at workflow
+  #    level. contents:read is only for the checkout.
+  #  * Posted with GITHUB_TOKEN so the creator is github-actions[bot] (app
+  #    15368), which is what the required-context pin accepts. Never app_id -1:
+  #    that would let a PAT post it. merge-guard.yml's live CI-surface floor is
+  #    what stops a same-repo PR from editing THIS workflow to post it itself.
+  #  * Scripts come from the BASE sha, not the PR merge ref: a PR cannot weaken
+  #    the recorder's own script and have it grade itself.
+  #  * Runner: this repo's `vars.CI_RUNNER || 'ubuntu-latest'` convention. NOT the
+  #    backend's CI_RUNNER_OVERFLOW chain — here CI_RUNNER_OVERFLOW points at the
+  #    scarce self-hosted pool (see merge-guard.yml's runs-on rationale).
+  # ---------------------------------------------------------------------------
+  record-opus-verdict:
+    name: record opus verdict
+    needs: [opus-gate]
+    if: ${{ !cancelled() }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Checkout recorder scripts from the base sha (trusted)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Post opus-verdict-recorded
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPUS_RESULT: ${{ needs.opus-gate.result }}
+          BINDING_VERDICT: ${{ needs.opus-gate.outputs.binding_verdict }}
+          ACTOR: ${{ github.actor }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          bash .github/scripts/post_opus_verdict_recorded.sh \
+            "$OPUS_RESULT" "$BINDING_VERDICT" "$ACTOR" "$HEAD_SHA" "$RUN_URL"
