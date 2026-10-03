@@ -54,6 +54,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       pull-requests: read
+      # actions:read is only for human_approval_is_current_for_head() below (the
+      # earliest workflow-run time of the live head SHA). [2026-10-02 review fix]
+      actions: read
     steps:
       - name: Check for hold labels
         env:
@@ -194,13 +197,64 @@ jobs:
             return 1
           }
 
+          # [2026-10-02 review fix, savvy-backend#1595 / tracking #1239] SHA-BINDING
+          # of THIS release path. The `opus-verdict-recorded` override status is
+          # SHA-bound by construction, but a label is not: an allowlisted human
+          # approves SHA A, anyone with write access pushes SHA B (which may edit a
+          # workflow), merge-guard re-runs on `synchronize`, finds the old verified
+          # `labeled` event and used to exit 0 BEFORE the CI-surface floor below.
+          #
+          # The approval counts only if the newest verified `labeled human-approved`
+          # event is NEWER than the earliest workflow run GitHub created for the
+          # LIVE head SHA (a push starts gate/ci/merge-guard runs within seconds, so
+          # that time is a server-side "this SHA arrived" marker; commit author /
+          # committer dates are forgeable and are NOT used). A push after the label
+          # therefore invalidates it; re-add the label after reviewing the new SHA.
+          # Same-second ties, a SHA with no run yet, or ANY API error: not current
+          # (fail-closed). ISO-8601 UTC timestamps compare correctly as strings.
+          # Used HERE only: the override job already binds the SHA itself
+          # (EVENT_HEAD_SHA == live head), so verify_human_approved.sh is unchanged
+          # and the drift test above still holds.
+          human_approval_is_current_for_head() {
+            local approved_at head_sha first_run raw
+            if ! raw=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/events" \
+                         --paginate --jq '.[] | select(.event=="labeled" and .label.name=="human-approved") | .created_at' 2>&1); then
+              echo "::warning::Could not read the 'human-approved' label time — treating the approval as not current (fail-closed): $raw"
+              return 1
+            fi
+            approved_at=$(printf '%s\n' "$raw" | tail -n1)
+            if ! head_sha=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha' 2>&1); then
+              echo "::warning::Could not read the live head SHA — treating the approval as not current (fail-closed): $head_sha"
+              return 1
+            fi
+            if ! raw=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${head_sha}&per_page=100" \
+                         --paginate --jq '.workflow_runs[].created_at' 2>&1); then
+              echo "::warning::Could not read workflow runs for ${head_sha:0:7} — treating the approval as not current (fail-closed): $raw"
+              return 1
+            fi
+            first_run=$(printf '%s\n' "$raw" | grep -E '^[0-9]{4}-' | sort | head -n1)
+            if ! printf '%s' "$approved_at" | grep -Eq '^[0-9]{4}-' || [ -z "$first_run" ]; then
+              echo "::warning::No usable label time ('$approved_at') or run time ('$first_run') for ${head_sha:0:7} — treating the approval as not current (fail-closed)."
+              return 1
+            fi
+            if [[ "$approved_at" > "$first_run" ]]; then
+              return 0
+            fi
+            echo "::warning::'human-approved' (added $approved_at) predates the live head ${head_sha:0:7} (first run $first_run) — the approval was for an earlier commit and does not carry over a push."
+            return 1
+          }
+
           if has 'human-approved'; then
             if verified_human_approved_adder; then
-              echo "PR carries 'human-approved' — a human has reviewed this and cleared it."
-              echo "Advisory holds ('reviewing', 'needs-human-review') are ignored."
-              exit 0
+              if human_approval_is_current_for_head; then
+                echo "PR carries 'human-approved' — a human has reviewed this and cleared it."
+                echo "Advisory holds ('reviewing', 'needs-human-review') are ignored."
+                exit 0
+              fi
+              echo "::error::'human-approved' is STALE for the current head commit (pushed after the approval) — treating it as ABSENT (fail-closed). Re-add the label after reviewing the new commit."
+            else
+              echo "::error::'human-approved' is present but its adder could not be verified — treating it as ABSENT (fail-closed)."
             fi
-            echo "::error::'human-approved' is present but its adder could not be verified — treating it as ABSENT (fail-closed)."
           fi
 
           if has 'reviewing|needs-human-review'; then
@@ -212,29 +266,35 @@ jobs:
 
           # [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
           # LIVE CI-SURFACE FLOOR. savvy_landing had no CI-surface check in this
-          # required job: gate.yml's review/opus-gate compute it, but they are NOT
-          # required and start only after the required checks finish, and
+          # job: gate.yml's review/opus-gate compute it, but they are NOT required
+          # and start only after the required checks finish, and
           # auto-arm-merge.yml labels a brick-risk PR `do-not-merge` only on
           # opened/ready_for_review/labeled — never on a later push. So a PR could
           # add or change a workflow after opening and merge unlabeled.
           #
-          # That matters more now: the binding `opus-verdict-recorded` status is
-          # posted by github-actions[bot] from gate.yml. A same-repo PR that edits
-          # .github/workflows could post that status itself, so this required check
-          # must refuse CI-surface PRs unless a VERIFIED human approved them (the
-          # `human-approved` branch above has already exited 0 in that case). The
-          # file list is read live from the API, never from the event payload.
+          # NOT AN ANTI-SPOOF CONTROL (corrected 2026-10-02 after review): ruleset
+          # 23711370 requires only gate, workflow-safety and Gitleaks, so merge-guard
+          # is NOT a required check in this repo today, and this job runs from the
+          # PR's own merge ref, so a PR that edits merge-guard.yml (or gate.yml) is
+          # judged by its OWN copy. This floor therefore does NOT stop a same-repo PR
+          # from posting `opus-verdict-recorded` itself with a GITHUB_TOKEN job. It
+          # is a convenience block for ordinary PRs, and a real merge gate only if
+          # merge-guard is added to the ruleset. The control a PR cannot edit is
+          # CODEOWNERS read from the BASE branch: `/.github/` and
+          # `/.claude/scripts/` are owned by @Sara3 and the required-flip step turns
+          # on require-code-owner-review. The SHA-bound human override and the
+          # break-glass workflow-pr-admin-merge are the intended ways through.
           #
-          # RESIDUAL (documented, same as savvy-backend): this job runs from the PR's
-          # own merge ref, so a PR that edits merge-guard.yml itself is judged by its
-          # own copy. The backstops are the SHA-bound human override and CODEOWNERS /
-          # branch rules, not this file.
+          # The pattern is the shared CI-surface definition in
+          # .github/scripts/ci_surface_paths.sh (this job has no checkout, so the
+          # literal is inline; __tests__/ci_surface_paths.test.sh keeps them equal).
+          # The file list is read live from the API, never from the event payload.
           if ! PR_FILES=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename' 2>&1); then
             echo "::error::Could not read live PR file list — refusing to clear (fail-closed): $PR_FILES"
             exit 1
           fi
-          if printf '%s\n' "$PR_FILES" | grep -Eq '^[.]github/(workflows|scripts)/|^[.]claude/scripts/'; then
-            echo "::error::PR touches CI-surface paths (.github/workflows/, .github/scripts/, .claude/scripts/) — human-review floor, evaluated here so it cannot be outrun by a slower job. Add 'human-approved' (as an allowlisted human) after reviewing this diff to merge."
+          if printf '%s\n' "$PR_FILES" | grep -Eq '^[.]github/(workflows|scripts)/|^[.]claude/scripts/|^[.]github/(CODEOWNERS|dependabot[.]yml)$'; then
+            echo "::error::PR touches CI-surface paths (.github/workflows/, .github/scripts/, .claude/scripts/, .github/CODEOWNERS, .github/dependabot.yml) — human-review floor, evaluated here so it cannot be outrun by a slower job. Add 'human-approved' (as an allowlisted human) after reviewing this diff to merge."
             exit 1
           fi
 

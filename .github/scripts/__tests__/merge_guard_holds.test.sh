@@ -111,22 +111,47 @@ fi
 # The events/files stubs emit plain lines directly, standing in for what the
 # real `gh api ... --jq '...'` calls would already have filtered down to — the
 # guard script never sees raw JSON either way.
+#
+# SHA-BINDING (2026-10-02 review fix): the guard also reads three more things to
+# decide whether a verified `human-approved` is still CURRENT for the live head
+# (human_approval_is_current_for_head): the label's `created_at` (events call
+# with a created_at --jq), the live head sha (pulls call with a head.sha --jq),
+# and the earliest workflow-run `created_at` for that sha (actions/runs call).
+# Optional 7th/8th args set the label time / first run time; "FAIL" makes that
+# call error. Defaults make the approval current (label newer than the first run).
 run_guard() {
   local labels="$1" events_actors="${2:-}" allowlist="${3:-Sara3}" files="${4:-README.md}"
+  local approved_at="${5:-2026-10-02T12:00:00Z}" first_run="${6:-2026-10-02T11:00:00Z}"
   local bindir="$TMPROOT/bin"
   rm -rf "$bindir"; mkdir -p "$bindir"
 
   {
     printf '%s\n' '#!/bin/bash'
     printf '%s\n' 'mode=""'
-    printf '%s\n' 'for a in "$@"; do'
-    printf '%s\n' '  case "$a" in'
-    printf '%s\n' '    */pulls/*/files) mode=files ;;'
-    printf '%s\n' '    */pulls/*) mode=labels ;;'
-    printf '%s\n' '    */issues/*/events) mode=events ;;'
-    printf '%s\n' '  esac'
-    printf '%s\n' 'done'
-    printf '%s\n' 'if [ "$mode" = labels ]; then'
+    printf '%s\n' 'args="$*"'
+    printf '%s\n' 'case "$args" in'
+    printf '%s\n' '  *actions/runs*) mode=runs ;;'
+    printf '%s\n' '  */issues/*/events*created_at*) mode=eventtime ;;'
+    printf '%s\n' '  */issues/*/events*) mode=events ;;'
+    printf '%s\n' '  */pulls/*/files*) mode=files ;;'
+    printf '%s\n' '  */pulls/*head.sha*) mode=head ;;'
+    printf '%s\n' '  */pulls/*) mode=labels ;;'
+    printf '%s\n' 'esac'
+    printf '%s\n' 'if [ "$mode" = runs ]; then'
+    if [ "$first_run" = "FAIL" ]; then
+      printf '%s\n' '  echo "HTTP 502 Bad Gateway" >&2; exit 1'
+    else
+      printf '%s\n' "  printf '%s\\n' '$first_run' '2026-10-02T11:30:00Z'"
+    fi
+    printf '%s\n' 'elif [ "$mode" = eventtime ]; then'
+    if [ "$approved_at" = "FAIL" ]; then
+      printf '%s\n' '  echo "HTTP 502 Bad Gateway" >&2; exit 1'
+    else
+      printf '%s\n' "  printf '%s\\n' '$approved_at'"
+    fi
+    printf '%s\n' 'elif [ "$mode" = head ]; then'
+    printf '%s\n' "  echo 0123456789abcdef0123456789abcdef01234567"
+    printf '%s\n' 'elif [ "$mode" = labels ]; then'
     if [ "$labels" = "FAIL" ]; then
       printf '%s\n' '  echo "HTTP 502 Bad Gateway" >&2; exit 1'
     else
@@ -166,7 +191,8 @@ run_guard() {
 
 expect() {
   local desc="$1" labels="$2" events_actors="$3" want="$4" allowlist="${5:-Sara3}" files="${6:-README.md}"
-  local got; got="$(run_guard "$labels" "$events_actors" "$allowlist" "$files")"
+  local approved_at="${7:-2026-10-02T12:00:00Z}" first_run="${8:-2026-10-02T11:00:00Z}"
+  local got; got="$(run_guard "$labels" "$events_actors" "$allowlist" "$files" "$approved_at" "$first_run")"
   if [ "$got" = "$want" ]; then
     echo "PASS: $desc"
   else
@@ -180,7 +206,8 @@ expect() {
 # prove WHICH message fired, not just that something exited non-zero.
 expect_contains() {
   local desc="$1" labels="$2" events_actors="$3" allowlist="$4" files="$5" want_substring="$6"
-  run_guard "$labels" "$events_actors" "$allowlist" "$files" >/dev/null
+  local approved_at="${7:-2026-10-02T12:00:00Z}" first_run="${8:-2026-10-02T11:00:00Z}"
+  run_guard "$labels" "$events_actors" "$allowlist" "$files" "$approved_at" "$first_run" >/dev/null
   if grep -qF "$want_substring" "$TMPROOT/last_output"; then
     echo "PASS: $desc"
   else
@@ -264,6 +291,36 @@ expect "non-CI-surface file list, no labels -> clears (regression guard)" \
 
 expect "unreadable PR file list -> fails CLOSED" \
        "" "" 1 "Sara3" "FAIL"
+
+# ---------------------------------------------------------------------------
+# SHA-BINDING of the human-approved release (2026-10-02 review fix): an
+# allowlisted human approves SHA A, then a push creates SHA B. merge-guard
+# re-runs on `synchronize`; the old verified label event must NOT carry over.
+#   approved_at (arg 7) vs the earliest workflow-run time of the live head (arg 8)
+# ---------------------------------------------------------------------------
+NHR="$(printf 'needs-human-review\nhuman-approved')"
+expect "approve-then-push: label older than the live head's first run -> approval is STALE, hold applies" \
+       "$NHR" "Sara3" 1 "Sara3" "README.md" "2026-10-02T10:00:00Z" "2026-10-02T11:00:00Z"
+expect_contains "approve-then-push names the stale approval" \
+       "$NHR" "Sara3" "Sara3" "README.md" "STALE" "2026-10-02T10:00:00Z" "2026-10-02T11:00:00Z"
+expect "approve-then-push of a CI-surface edit (no hold label) -> the floor blocks it (was: exit 0 before the floor)" \
+       "human-approved" "Sara3" 1 "Sara3" ".github/workflows/gate.yml" "2026-10-02T10:00:00Z" "2026-10-02T11:00:00Z"
+expect "label added AFTER the head's first run (reviewed this commit) -> still clears (non-vacuous twin)" \
+       "$NHR" "Sara3" 0 "Sara3" "README.md" "2026-10-02T11:00:01Z" "2026-10-02T11:00:00Z"
+expect "same-second tie -> not current (fail-closed)" \
+       "$NHR" "Sara3" 1 "Sara3" "README.md" "2026-10-02T11:00:00Z" "2026-10-02T11:00:00Z"
+expect "unreadable workflow-run list -> approval not current (fail-closed)" \
+       "$NHR" "Sara3" 1 "Sara3" "README.md" "2026-10-02T12:00:00Z" "FAIL"
+expect "unreadable label time -> approval not current (fail-closed)" \
+       "$NHR" "Sara3" 1 "Sara3" "README.md" "FAIL" "2026-10-02T11:00:00Z"
+expect "CI-surface edit + current verified approval -> clears (override path unchanged)" \
+       "human-approved" "Sara3" 0 "Sara3" ".github/workflows/gate.yml" "2026-10-02T12:00:00Z" "2026-10-02T11:00:00Z"
+
+# --- the CI-surface definition now includes CODEOWNERS + dependabot.yml (and .claude/scripts/) ---
+expect ".github/CODEOWNERS -> blocks (CI-surface)"      "" "" 1 "Sara3" ".github/CODEOWNERS"
+expect ".github/dependabot.yml -> blocks (CI-surface)"  "" "" 1 "Sara3" ".github/dependabot.yml"
+expect ".claude/scripts/x.js -> blocks (CI-surface)"    "" "" 1 "Sara3" ".claude/scripts/x.js"
+expect "a file merely named like dependabot.yml elsewhere -> clears" "" "" 0 "Sara3" "docs/.github/dependabot.yml.md"
 
 if [ "$FAILS" -gt 0 ]; then
   echo "$FAILS test(s) FAILED"

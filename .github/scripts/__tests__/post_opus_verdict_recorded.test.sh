@@ -22,12 +22,17 @@ assert() {
 # .../statuses/<sha> is recorded to $SB/posts and fails when $SB/post_fail exists.
 setup() {
   SB="$(mktemp -d)"; mkdir -p "$SB/bin"; : > "$SB/posts"; : > "$SB/calls"; : > "$SB/existing"
+  printf 'package.json\n' > "$SB/files"
   cat > "$SB/bin/gh" <<STUB
 #!/bin/bash
 echo "\$*" >> "$SB/calls"
 if [ "\$1" = "api" ] && [ "\$2" = "-X" ] && [ "\$3" = "POST" ]; then
   [ -f "$SB/post_fail" ] && { echo '{"message":"Server Error","status":"500"}' >&2; exit 1; }
   echo "\$*" >> "$SB/posts"; exit 0
+fi
+if [ "\$1" = "api" ] && [[ "\$*" == *"/pulls/"*"/files"* ]]; then
+  [ -f "$SB/files_fail" ] && { echo '{"message":"boom","status":"502"}' >&2; exit 1; }
+  cat "$SB/files"; exit 0
 fi
 if [ "\$1" = "api" ] && [[ "\$*" == *"/statuses?per_page"* ]]; then
   [ -f "$SB/read_fail" ] && { echo '{"message":"boom","status":"500"}' >&2; exit 1; }
@@ -41,7 +46,7 @@ teardown() { rm -rf "$SB"; }
 
 # run RESULT VERDICT ACTOR [SHA] — prints exit code; posts land in $SB/posts
 run() {
-  PATH="$SB/bin:$PATH" GITHUB_REPOSITORY="withSavvy/savvy_landing" GATE_RETRY_SLEEP=0 \
+  PATH="$SB/bin:$PATH" GITHUB_REPOSITORY="withSavvy/savvy_landing" GATE_RETRY_SLEEP=0 PR_NUMBER="${T_PR-7}" \
     bash "$SCRIPT" "$1" "$2" "$3" "${4:-$SHA}" "https://github.com/withSavvy/savvy_landing/actions/runs/1" > "$SB/out" 2>&1
   echo $?
 }
@@ -60,6 +65,33 @@ echo "--- success allowlist ---"
 expect "success + PASS -> success" success success PASS Sara3
 expect "success + NOT_REQUIRED:trivial -> success" success success "NOT_REQUIRED:trivial" Sara3
 expect "skipped + dependabot[bot] -> success (opus-gate skips dependabot by design)" success skipped "" "dependabot[bot]"
+
+echo "--- dependabot + CI-surface (this repo's dependabot only bumps github-actions) ---"
+dep() { # dep DESC WANT_STATE FILES... ; FILES empty-string "FAIL" = file list unreadable
+  local desc="$1" want="$2" files="$3" rc got
+  setup
+  if [ "$files" = "FAIL" ]; then touch "$SB/files_fail"; else printf '%s\n' "$files" > "$SB/files"; fi
+  rc=$(run skipped "" "dependabot[bot]"); got="$(state_of)"
+  if [ "$rc" = "0" ] && [ "$got" = "$want" ]; then assert "$desc" 0; else assert "$desc (rc=$rc state='$got' want '$want')" 1; fi
+  LAST_DESC="$(desc_of)"; teardown
+}
+dep "dependabot + a workflow file -> failure (CI-surface gets no free pass)" failure ".github/workflows/ci.yml"
+[ "$LAST_DESC" = "opus-gate floor block (dependabot CI-surface)" ] && c=0 || c=1
+assert "dependabot CI-surface description (got '$LAST_DESC')" "$c"
+dep "dependabot + a .github/scripts file -> failure" failure "$(printf 'README.md\n.github/scripts/x.sh')"
+dep "dependabot + .github/dependabot.yml -> failure" failure ".github/dependabot.yml"
+dep "dependabot + .github/CODEOWNERS -> failure" failure ".github/CODEOWNERS"
+dep "dependabot + .claude/scripts/ file -> failure" failure ".claude/scripts/x.js"
+dep "dependabot + only non-CI-surface files -> success" success "$(printf 'package.json\npackage-lock.json')"
+dep "dependabot + unreadable PR file list -> failure (fail-closed)" failure "FAIL"
+setup; rc=$(T_PR="" run skipped "" "dependabot[bot]"); got="$(state_of)"
+{ [ "$rc" = "0" ] && [ "$got" = "failure" ]; } && c=0 || c=1
+assert "dependabot + no PR number -> failure (fail-closed)" "$c"
+teardown
+setup; rc=$(run skipped "" Sara3); got="$(state_of)"
+{ [ "$rc" = "0" ] && [ "$got" = "failure" ] && ! grep -q '/pulls/' "$SB/calls"; } && c=0 || c=1
+assert "a non-dependabot skip never even reads the file list and stays failure" "$c"
+teardown
 
 echo "--- everything else -> failure ---"
 expect "skipped + human actor -> failure" failure skipped "" Sara3

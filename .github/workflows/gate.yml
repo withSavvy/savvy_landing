@@ -29,12 +29,15 @@ name: Gate
 # verdict. The merge-gating signal is now the commit status
 # `opus-verdict-recorded`, posted by the `record-opus-verdict` job at the bottom
 # of this file from opus-gate's `binding_verdict` output (success ONLY for an
-# Opus PASS or a dependabot PR; failure for a crash, a floor block, a
+# Opus PASS or a dependabot PR that touches no CI-surface path; failure for a crash, a floor block, a
 # CI-surface edit, a cancelled run, or anything unrecognised). `review` and
 # `opus-gate` now conclude FAILURE unless the reviewer actually ran clean.
 # Rollout is SHADOW first: the status is posted on every PR but is not a
 # required context until an admin adds {"context":"opus-verdict-recorded",
-# "integration_id":15368} to ruleset 23711370. The escape hatches are a re-run
+# "integration_id":15368} to ruleset 23711370, TOGETHER WITH code-owner review on
+# `/.github/` + `/.claude/scripts/` (CODEOWNERS): a same-repo PR can edit this
+# workflow to post the status itself, and code-owner review read from the base
+# branch is the only guard a PR cannot edit. The escape hatches are a re-run
 # of the failed jobs, or an allowlisted human adding `human-approved`
 # (auto-arm-merge.yml's record-human-opus-override job, SHA-bound). REMOVING
 # LABELS NEVER RELEASES. See .github/scripts/gate_binding_verdict.sh.
@@ -397,7 +400,11 @@ jobs:
               --detail "gh pr view --json files failed (network/API blip) — couldn't determine changed files" || true
             exit 1
           fi
-          if printf '%s\n' "$PR_FILES" | grep -Eq '^[.]github/(workflows|scripts)/'; then
+          # One CI-surface definition shared with merge-guard + the recorder
+          # (ci_surface_paths.sh; drift-tested) — [savvy-backend#1595 review fix].
+          # shellcheck source=/dev/null
+          . .github/scripts/ci_surface_paths.sh
+          if printf '%s\n' "$PR_FILES" | grep -Eq "$CI_SURFACE_REGEX"; then
             EDITS_CI=true
             FLOOR_BLOCKED=true
             FLOOR_REASON="${FLOOR_REASON:+$FLOOR_REASON, }CI-surface-edits=true"
@@ -941,7 +948,11 @@ jobs:
               --detail "gh pr view --json files failed (network/API blip) — couldn't determine changed files" || true
             exit 1
           fi
-          if printf '%s\n' "$PR_FILES" | grep -Eq '^[.]github/(workflows|scripts)/'; then
+          # One CI-surface definition shared with merge-guard + the recorder
+          # (ci_surface_paths.sh; drift-tested) — [savvy-backend#1595 review fix].
+          # shellcheck source=/dev/null
+          . .github/scripts/ci_surface_paths.sh
+          if printf '%s\n' "$PR_FILES" | grep -Eq "$CI_SURFACE_REGEX"; then
             EDITS_CI=true
             FLOOR_BLOCKED=true
             FLOOR_REASON="${FLOOR_REASON:+$FLOOR_REASON, }CI-surface-edits=true"
@@ -1464,7 +1475,8 @@ jobs:
   # posted on every PR but is NOT yet a required context. After ~48h of audit
   # (every head sha has one; every would-block is a real FAIL, crash or
   # CI-surface edit) an admin adds {"context":"opus-verdict-recorded",
-  # "integration_id":15368} to ruleset 23711370; from then on GitHub itself holds
+  # "integration_id":15368} to ruleset 23711370 AND turns on code-owner review
+  # for `/.github/` (see the KNOWN LIMIT below); from then on GitHub itself holds
   # every arm path (native auto-merge, resweeper --auto, manual) at "Expected"
   # until a verdict arrives. Nothing here arms, disarms or labels anything.
   #
@@ -1475,13 +1487,31 @@ jobs:
   #    `opus-verdict-recorded`, so this job's own check-run can never satisfy it.
   #  * Job-scoped permissions: statuses:write is held by this job (and by
   #    auto-arm-merge.yml's record-human-opus-override) and NOWHERE at workflow
-  #    level. contents:read is only for the checkout.
+  #    level. contents:read is only for the checkout; pull-requests:read is only
+  #    for the dependabot CI-surface file-list check in the post script.
   #  * Posted with GITHUB_TOKEN so the creator is github-actions[bot] (app
   #    15368), which is what the required-context pin accepts. Never app_id -1:
-  #    that would let a PAT post it. merge-guard.yml's live CI-surface floor is
-  #    what stops a same-repo PR from editing THIS workflow to post it itself.
-  #  * Scripts come from the BASE sha, not the PR merge ref: a PR cannot weaken
-  #    the recorder's own script and have it grade itself.
+  #    that would let a PAT post it.
+  #  * KNOWN LIMIT — NOTHING IN THIS FILE STOPS A PR FROM SPOOFING THE STATUS.
+  #    `pull_request` workflows run from the PR's own merge ref, so a same-repo PR
+  #    can edit THIS file (or merge-guard.yml) and add a job with
+  #    `permissions: {statuses: write}` that POSTs opus-verdict-recorded=success
+  #    with GITHUB_TOKEN; the creator is then github-actions[bot] and passes the
+  #    integration_id pin. merge-guard is NOT a required check in this repo
+  #    (ruleset 23711370 requires only gate, workflow-safety and Gitleaks) and,
+  #    even if it were, it is also PR-controlled. The ONLY guard a PR cannot edit
+  #    is CODEOWNERS read from the BASE branch with require-code-owner-review on:
+  #    `/.github/` and `/.claude/scripts/` are owned by @Sara3, and the Sara-only
+  #    required-flip step turns that review requirement on in the same change
+  #    that makes this context required. Do not flip the context without it.
+  #  * The recorder SCRIPTS (post_opus_verdict_recorded.sh, gh_retry.sh,
+  #    ci_surface_paths.sh) are checked out from the BASE BRANCH TIP, not the PR
+  #    merge ref, so a PR cannot weaken those scripts in order to be graded by
+  #    them. That does NOT make the job trustworthy against a PR that edits this
+  #    workflow file (see above). The base BRANCH tip is used rather than
+  #    pull_request.base.sha because base.sha is frozen at PR-open time: a PR
+  #    opened before this change merged would check out a tree with no recorder
+  #    script at all and sit at "Expected" with no working override.
   #  * Runner: this repo's `vars.CI_RUNNER || 'ubuntu-latest'` convention. NOT the
   #    backend's CI_RUNNER_OVERFLOW chain — here CI_RUNNER_OVERFLOW points at the
   #    scarce self-hosted pool (see merge-guard.yml's runs-on rationale).
@@ -1494,12 +1524,13 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      pull-requests: read
       statuses: write
     steps:
-      - name: Checkout recorder scripts from the base sha (trusted)
+      - name: Checkout recorder scripts from the base branch tip (trusted)
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.base_ref }}
           sparse-checkout: .github/scripts
           persist-credentials: false
 
@@ -1510,6 +1541,7 @@ jobs:
           BINDING_VERDICT: ${{ needs.opus-gate.outputs.binding_verdict }}
           ACTOR: ${{ github.actor }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -uo pipefail

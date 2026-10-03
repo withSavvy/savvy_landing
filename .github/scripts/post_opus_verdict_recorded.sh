@@ -13,13 +13,21 @@
 #
 # usage: post_opus_verdict_recorded.sh <opus-gate result> <binding_verdict> \
 #                                      <actor> <head_sha> [run_url]
-# env:   GH_TOKEN (statuses:write), GITHUB_REPOSITORY, optional
+# env:   GH_TOKEN (statuses:write + pull-requests:read), GITHUB_REPOSITORY,
+#        PR_NUMBER (only needed on the dependabot path), optional
 #        GATE_RETRY_SLEEP (seconds between gh retries, default 2)
 #
 # STATE MAPPING — an explicit allowlist; everything else is `failure`:
 #   success  result=success AND verdict in {PASS, NOT_REQUIRED:trivial}
-#   success  result=skipped AND actor=dependabot[bot]   (opus-gate's own `if:`
-#            skips dependabot PRs by design; the deterministic floor still ran)
+#   success  result=skipped AND actor=dependabot[bot] AND the PR's LIVE file list
+#            matches NO CI-surface path (ci_surface_paths.sh). opus-gate's own
+#            `if:` skips dependabot PRs by design, but this repo's dependabot.yml
+#            has only the `github-actions` ecosystem, so EVERY dependabot PR
+#            edits .github/workflows/ — a CI-surface change that must not get a
+#            free pass. [2026-10-02 review fix, savvy-backend#1595 / #1239]
+#   failure  dependabot + a CI-surface path (or an unreadable file list):
+#            "opus-gate floor block (dependabot CI-surface)"; released by a
+#            verified `human-approved` (SHA-bound override) or break-glass.
 #   failure  INFRA:<TOKEN>   description "opus-gate infra-neutral (<TOKEN>)"
 #            ROUTE_HUMAN / FLOOR / FAIL
 #            cancelled, skipped (non-dependabot), failure, empty, unknown
@@ -50,6 +58,9 @@ OVERRIDE_PREFIX="human-override"
 RETRY_SLEEP="${GATE_RETRY_SLEEP:-2}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${GITHUB_REPOSITORY:-}"
+PR="${PR_NUMBER:-}"
+# shellcheck source=ci_surface_paths.sh
+source "$SCRIPT_DIR/ci_surface_paths.sh"
 
 if ! printf '%s' "$HEAD_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
   echo "::error::post_opus_verdict_recorded: head sha '${HEAD_SHA}' is not a 40-char hex sha — refusing to post."
@@ -68,8 +79,19 @@ if [ "$RESULT" = "success" ] && { [ "$VERDICT" = "PASS" ] || [ "$VERDICT" = "NOT
   STATE="success"
   if [ "$VERDICT" = "PASS" ]; then DESC="opus-gate PASS"; else DESC="opus-gate not required (trivial PR)"; fi
 elif [ "$RESULT" = "skipped" ] && [ "$ACTOR" = "dependabot[bot]" ]; then
-  STATE="success"
-  DESC="opus-gate skipped by design (dependabot)"
+  # Live file list, never an event payload. Fail-closed: no PR number, an API
+  # error, or ANY CI-surface path means failure (a human then releases it).
+  DESC="opus-gate floor block (dependabot: could not read PR files)"
+  if printf '%s' "$PR" | grep -Eq '^[0-9]+$' && \
+     PR_FILES="$(bash "$SCRIPT_DIR/gh_retry.sh" --retries 2 --sleep "$RETRY_SLEEP" -- \
+        gh api "repos/${REPO}/pulls/${PR}/files" --paginate --jq '.[].filename' 2>/dev/null)"; then
+    if printf '%s\n' "$PR_FILES" | grep -Eq "$CI_SURFACE_REGEX"; then
+      DESC="opus-gate floor block (dependabot CI-surface)"
+    else
+      STATE="success"
+      DESC="opus-gate skipped by design (dependabot, no CI-surface paths)"
+    fi
+  fi
 else
   case "$VERDICT" in
     INFRA:*)

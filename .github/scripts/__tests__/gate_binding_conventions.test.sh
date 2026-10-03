@@ -26,7 +26,12 @@
 #     (it forces SCRUB=1, which needs bubblewrap: the #1239 NO_EXEC_FILE_INFRA crash).
 #   - the override job lives in auto-arm-merge.yml, fires only on `labeled`
 #     `human-approved` (never `unlabeled`: removing labels never releases), and
-#     checks out the BASE sha.
+#     checks out the BASE BRANCH TIP (not the PR-open-time base.sha, which would
+#     leave PRs opened before this merged with no recorder/override script).
+#   - [review fix] CODEOWNERS covers /.github/ and /.claude/scripts/ (the only guard
+#     a PR cannot edit; see gate.yml's KNOWN LIMIT), ci.yml's required `gate` job
+#     RUNS these tests, merge-guard's human-approved release is SHA-bound, and
+#     the dependabot success path reads the live file list.
 #
 # Needs python3 + PyYAML (preinstalled on GitHub-hosted runners; `pip install pyyaml`).
 set -uo pipefail
@@ -124,20 +129,22 @@ check("the review enforce step has an id and writes its token output",
 print("--- the recorder job ---")
 check("exists, needs only opus-gate", rec.get("needs") in (["opus-gate"], "opus-gate"))
 check("its job-level `if` is exactly !cancelled()", norm_if(rec.get("if")) == "!cancelled()")
-check("job-scoped permissions: statuses write + contents read, nothing else",
-      rec.get("permissions") == {"contents": "read", "statuses": "write"})
+check("job-scoped permissions: statuses write + contents read + pull-requests read (dependabot file list), nothing else",
+      rec.get("permissions") == {"contents": "read", "pull-requests": "read", "statuses": "write"})
 check("display name is not the required context name", rec.get("name") == "record opus verdict")
 check("runs on this repo's CI_RUNNER convention, never the CI_RUNNER_OVERFLOW chain",
       "vars.CI_RUNNER ||" in str(rec.get("runs-on")) and "OVERFLOW" not in str(rec.get("runs-on")))
 rsteps2 = rec.get("steps", [])
-check("checks out the BASE sha (a PR cannot weaken the script that grades it)",
-      any("actions/checkout" in s.get("uses", "") and s.get("with", {}).get("ref") == "${{ github.event.pull_request.base.sha }}" for s in rsteps2))
+check("checks out the BASE BRANCH TIP, never the frozen-at-open base.sha and never the PR head",
+      any("actions/checkout" in s.get("uses", "") and s.get("with", {}).get("ref") == "${{ github.base_ref }}" for s in rsteps2)
+      and "pull_request.base.sha" not in str(rsteps2) and "head" not in str([s.get("with", {}).get("ref") for s in rsteps2]))
 post = [s for s in rsteps2 if "post_opus_verdict_recorded.sh" in s.get("run", "")]
 check("posts through post_opus_verdict_recorded.sh with GITHUB_TOKEN (creator github-actions[bot])",
       len(post) == 1 and post[0].get("env", {}).get("GH_TOKEN") == "${{ secrets.GITHUB_TOKEN }}")
 check("passes PR-derived values through env, never inline in the run: script",
       len(post) == 1 and "${{" not in post[0]["run"]
-      and post[0]["env"].get("BINDING_VERDICT") == "${{ needs.opus-gate.outputs.binding_verdict }}")
+      and post[0]["env"].get("BINDING_VERDICT") == "${{ needs.opus-gate.outputs.binding_verdict }}"
+      and post[0]["env"].get("PR_NUMBER") == "${{ github.event.pull_request.number }}")
 
 print("--- statuses: write holders ---")
 holders = []
@@ -214,8 +221,9 @@ check("fires only on labeled human-approved from a same-repo PR",
       and "github.event.action == 'labeled'" in cond and "github.event.label.name == 'human-approved'" in cond)
 check("job-scoped permissions include statuses: write, no contents: write",
       ov.get("permissions", {}).get("statuses") == "write" and ov["permissions"].get("contents") == "read")
-check("checks out the BASE sha, non-cancelling concurrency per PR and head sha",
-      any(s.get("with", {}).get("ref") == "${{ github.event.pull_request.base.sha }}" for s in ov.get("steps", []))
+check("checks out the BASE BRANCH TIP (base.ref, never base.sha / the PR head), non-cancelling concurrency per PR and head sha",
+      any(s.get("with", {}).get("ref") == "${{ github.event.pull_request.base.ref }}" for s in ov.get("steps", []))
+      and not any("base.sha" in str(s.get("with", {})) or "head" in str(s.get("with", {}).get("ref", "")) for s in ov.get("steps", []))
       and ov.get("concurrency", {}).get("cancel-in-progress") is False
       and "pull_request.number" in ov["concurrency"]["group"] and "head.sha" in ov["concurrency"]["group"])
 ost = [s for s in ov.get("steps", []) if "record_human_opus_override.sh" in s.get("run", "")]
@@ -227,22 +235,45 @@ check("the trigger did not widen: no `unlabeled`-driven release", types == ["ope
 check("runs on this repo's CI_RUNNER convention, never the CI_RUNNER_OVERFLOW chain",
       "vars.CI_RUNNER ||" in str(ov.get("runs-on")) and "OVERFLOW" not in str(ov.get("runs-on")))
 
-print("--- merge-guard.yml: live CI-surface floor (a PR must not be able to post the status itself) ---")
+print("--- merge-guard.yml: live CI-surface floor (a convenience block; NOT an anti-spoof control, see CODEOWNERS below) ---")
 mg = guard["jobs"]["merge-guard"]
 mrun = "\n".join(s.get("run", "") for s in mg["steps"])
 check("merge-guard evaluates the CI-surface floor from the LIVE file list",
-      "pulls/${PR_NUMBER}/files" in mrun and "^[.]github/(workflows|scripts)/|^[.]claude/scripts/" in mrun)
+      "pulls/${PR_NUMBER}/files" in mrun
+      and "^[.]github/(workflows|scripts)/|^[.]claude/scripts/|^[.]github/(CODEOWNERS|dependabot[.]yml)$" in mrun)
 check("the CI-surface floor comes AFTER the verified human-approved release and the hold checks",
       mrun.index("verified_human_approved_adder") < mrun.index("pulls/${PR_NUMBER}/files")
       and mrun.index("reviewing|needs-human-review") < mrun.index("pulls/${PR_NUMBER}/files"))
 check("merge-guard honours human-approved only through verified_human_approved_adder",
       "if verified_human_approved_adder; then" in mrun)
+check("merge-guard's human-approved release is SHA-bound: the exit-0 sits inside human_approval_is_current_for_head",
+      re.search(r"if verified_human_approved_adder; then\s+if human_approval_is_current_for_head; then\s+echo [^\n]*\n[^\n]*\n\s+exit 0", mrun) is not None
+      and "actions/runs?head_sha=" in mrun)
+check("merge-guard holds only the read scopes it needs (pull-requests + actions read), no write",
+      mg.get("permissions") == {"pull-requests": "read", "actions": "read"})
+check("merge-guard still has no checkout step (required label-only check on the hosted pool)",
+      not any("actions/checkout" in s.get("uses", "") for s in mg["steps"]))
 check("merge-guard stays on a GitHub-hosted runner literal", mg.get("runs-on") == "ubuntu-latest")
+
+print("--- the only guard a PR cannot edit: CODEOWNERS + the tests actually run in CI ---")
+with open(os.path.join(ROOT, ".github", "CODEOWNERS")) as f:
+    owners = [l.split() for l in f if l.strip() and not l.lstrip().startswith("#")]
+owned = {o[0]: o[1:] for o in owners}
+check("CODEOWNERS owns /.github/ and /.claude/scripts/ with @Sara3 (covers workflows, scripts, CODEOWNERS, dependabot.yml)",
+      owned.get("/.github/") == ["@Sara3"] and owned.get("/.claude/scripts/") == ["@Sara3"])
+_, ci = load("ci.yml")
+cisteps = ci["jobs"]["gate"]["steps"]
+check("ci.yml's required `gate` job runs every .github/scripts/__tests__/*.test.sh and fails on any failure",
+      any(".github/scripts/__tests__/*.test.sh" in s.get("run", "") and "rc=1" in s.get("run", "")
+          and 'exit "$rc"' in s.get("run", "") for s in cisteps))
+dep = [s for s in rsteps2 if "post_opus_verdict_recorded.sh" in s.get("run", "")]
+check("the dependabot success path needs PR_NUMBER (live file list) — passed to the post script",
+      len(dep) == 1 and "PR_NUMBER" in dep[0].get("env", {}))
 
 print("--- scripts exist and are executable ---")
 for name in ("gate_binding_verdict.sh", "gate_review_conclude.sh", "gate_probe_installation.sh",
              "post_opus_verdict_recorded.sh", "record_human_opus_override.sh", "verify_human_approved.sh",
-             "gate_infra_escalate.sh", "gh_retry.sh"):
+             "gate_infra_escalate.sh", "gh_retry.sh", "ci_surface_paths.sh"):
     p = os.path.join(SC, name)
     check(f"{name} exists and is executable", os.path.isfile(p) and bool(os.stat(p).st_mode & stat.S_IXUSR))
 
