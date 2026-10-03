@@ -7,8 +7,8 @@
 #   INFRA:<TOKEN>         the reviewer could not run (gate_check_ran.py token:
 #                         AUTH_FAIL, PERMISSION_DENIED_INFRA, USAGE_CAP_INFRA,
 #                         EMPTY_RESULT_INFRA, INSTALLATION_RATE_LIMIT_INFRA,
-#                         NO_EXEC_FILE_INFRA, RUNNER_SANDBOX_MISSING_INFRA,
-#                         FAIL_HARD). A crash is NOT a pass and NOT a rejection.
+#                         INSTALLATION_REST_THROTTLE_INFRA, NO_EXEC_FILE_INFRA,
+#                         RUNNER_SANDBOX_MISSING_INFRA, FAIL_HARD). A crash is NOT a pass and NOT a rejection.
 #   ROUTE_HUMAN           the reviewer ran but needs a human (incomplete review).
 #   FLOOR                 hard-block floor tripped (tier-0 failure, CI-surface
 #                         edit, review failure that is not an infra crash).
@@ -51,7 +51,7 @@ set -uo pipefail
 # Tokens that mean "the reviewer could not run" (couldn't verify, not a code
 # rejection). Keep in sync with gate_check_ran.py and gate_review_conclude.sh
 # (which sources this file for the list).
-INFRA_TOKENS=" AUTH_FAIL PERMISSION_DENIED_INFRA USAGE_CAP_INFRA EMPTY_RESULT_INFRA INSTALLATION_RATE_LIMIT_INFRA NO_EXEC_FILE_INFRA RUNNER_SANDBOX_MISSING_INFRA FAIL_HARD "
+INFRA_TOKENS=" AUTH_FAIL PERMISSION_DENIED_INFRA USAGE_CAP_INFRA EMPTY_RESULT_INFRA INSTALLATION_RATE_LIMIT_INFRA INSTALLATION_REST_THROTTLE_INFRA NO_EXEC_FILE_INFRA RUNNER_SANDBOX_MISSING_INFRA FAIL_HARD "
 
 binding_verdict() {
   local job_status="${JOB_STATUS:-}"

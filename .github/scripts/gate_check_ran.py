@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Decide a claude-code-action review outcome. Prints ONE token:
 PASS | ROUTE_HUMAN | FAIL_HARD | AUTH_FAIL | NO_EXEC_FILE_INFRA |
-INSTALLATION_RATE_LIMIT_INFRA.
+INSTALLATION_RATE_LIMIT_INFRA | INSTALLATION_REST_THROTTLE_INFRA.
 
 Source of truth is the action's EXECUTION FILE (its `result` event / `is_error`),
 NOT the `conclusion` output. claude-code-action@v1 does not reliably populate
@@ -27,10 +27,16 @@ Decision tree (first match wins):
      (structural, never model text) this is infra, not a code rejection:
        * `installation_probe_status=403|429` + a message containing "rate limit
          exceeded for installation" (a live REST probe made with the same App
-         token, only when the execution file is missing) ->
-         INSTALLATION_RATE_LIMIT_INFRA. 32 of the 34 #1239 occurrences were this
-         burst drain on the savvy-gate-bot installation; the action's own REST
-         call dies with a 403 before the review starts.
+         token, only when the execution file is missing). 32 of the 34 #1239
+         occurrences were this burst on the savvy-gate-bot installation; the
+         action's own REST call dies with a 403 before the review starts. Split
+         by the probe's x-ratelimit-remaining:
+           remaining > 0 -> INSTALLATION_REST_THROTTLE_INFRA (the REST bucket
+                            still has budget: a burst/secondary throttle, which
+                            clears in about a minute)
+           remaining = 0 -> INSTALLATION_RATE_LIMIT_INFRA (bucket drained until
+                            x-ratelimit-reset)
+           remaining unreadable -> INSTALLATION_RATE_LIMIT_INFRA (conservative).
        * any other crash -> NO_EXEC_FILE_INFRA.
      With no crash evidence (undeterminable cause, or no diag file passed) ->
      FAIL_HARD, fail closed. Never PASS on this arm. Every one of these is a
@@ -144,6 +150,14 @@ def installation_probe_rate_limited(path: str) -> bool:
     return "rate limit exceeded for installation" in message.lower()
 
 
+def installation_probe_has_budget(path: str) -> bool:
+    """True iff the probe's x-ratelimit-remaining parsed as an integer > 0, i.e.
+    the installation's REST bucket is NOT drained and the 403 was a throttle.
+    Empty/non-numeric/0 -> False (treated as a drained bucket)."""
+    raw = _diag_value(path, "installation_probe_remaining") or ""
+    return raw.isdigit() and int(raw) > 0
+
+
 def decide() -> str:
     # A. Workflow-file edits (or an explicit action skip) always need a human.
     if skipped == "true" or edits_workflows == "true":
@@ -160,6 +174,8 @@ def decide() -> str:
         #     evidence from the diag file names the class; otherwise undeterminable.
         if action_step_crashed(diag_file):
             if installation_probe_rate_limited(diag_file):
+                if installation_probe_has_budget(diag_file):
+                    return "INSTALLATION_REST_THROTTLE_INFRA"
                 return "INSTALLATION_RATE_LIMIT_INFRA"
             return "NO_EXEC_FILE_INFRA"
         # B3. No crash evidence: cause undeterminable -> fail closed.

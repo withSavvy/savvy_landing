@@ -73,6 +73,23 @@ assert_token "probe 403 'rate limit exceeded for installation' + crash -> INSTAL
   "$(printf '%s\ninstallation_probe_status=403\ninstallation_probe_remaining=0\ninstallation_probe_message=API rate limit exceeded for installation ID 146412380.' "$CRASH")"
 assert_token "probe 429 with the same message -> INSTALLATION_RATE_LIMIT_INFRA" "" "" "@ABSENT" false INSTALLATION_RATE_LIMIT_INFRA \
   "$(printf '%s\ninstallation_probe_status=429\ninstallation_probe_message=API rate limit exceeded for installation ID 1.' "$CRASH")"
+# [savvy-backend#1595 goal 3] remaining>0 = throttle with budget left; 0 = drained.
+assert_token "probe 403 installation message, remaining>0 -> INSTALLATION_REST_THROTTLE_INFRA" "" "" "@ABSENT" false INSTALLATION_REST_THROTTLE_INFRA \
+  "$(printf '%s\ninstallation_probe_status=403\ninstallation_probe_remaining=4731\ninstallation_probe_resource=core\ninstallation_probe_message=API rate limit exceeded for installation ID 146412380.' "$CRASH")"
+assert_token "probe 403 installation message, remaining=1 -> INSTALLATION_REST_THROTTLE_INFRA" "" "" "@ABSENT" false INSTALLATION_REST_THROTTLE_INFRA \
+  "$(printf '%s\ninstallation_probe_status=403\ninstallation_probe_remaining=1\ninstallation_probe_message=API rate limit exceeded for installation ID 1.' "$CRASH")"
+assert_token "probe 429 installation message, remaining>0 -> INSTALLATION_REST_THROTTLE_INFRA" "" "" "@ABSENT" false INSTALLATION_REST_THROTTLE_INFRA \
+  "$(printf '%s\ninstallation_probe_status=429\ninstallation_probe_remaining=12\ninstallation_probe_message=API rate limit exceeded for installation ID 1.' "$CRASH")"
+assert_token "probe 403 installation message, remaining=0 -> INSTALLATION_RATE_LIMIT_INFRA" "" "" "@ABSENT" false INSTALLATION_RATE_LIMIT_INFRA \
+  "$(printf '%s\ninstallation_probe_status=403\ninstallation_probe_remaining=0\ninstallation_probe_message=API rate limit exceeded for installation ID 1.' "$CRASH")"
+assert_token "probe 403 installation message, remaining non-numeric -> INSTALLATION_RATE_LIMIT_INFRA (conservative)" "" "" "@ABSENT" false INSTALLATION_RATE_LIMIT_INFRA \
+  "$(printf '%s\ninstallation_probe_status=403\ninstallation_probe_remaining=lots\ninstallation_probe_message=API rate limit exceeded for installation ID 1.' "$CRASH")"
+assert_token "probe 403 installation message, remaining negative -> INSTALLATION_RATE_LIMIT_INFRA" "" "" "@ABSENT" false INSTALLATION_RATE_LIMIT_INFRA \
+  "$(printf '%s\ninstallation_probe_status=403\ninstallation_probe_remaining=-5\ninstallation_probe_message=API rate limit exceeded for installation ID 1.' "$CRASH")"
+assert_token "remaining>0 but UNRELATED 403 message -> NO_EXEC_FILE_INFRA (throttle needs GitHub's own message)" "" "" "@ABSENT" false NO_EXEC_FILE_INFRA \
+  "$(printf '%s\ninstallation_probe_status=403\ninstallation_probe_remaining=4000\ninstallation_probe_message=Resource not accessible by integration' "$CRASH")"
+assert_token "remaining>0, 200 probe -> NO_EXEC_FILE_INFRA (budget alone is not a rate limit)" "" "" "@ABSENT" false NO_EXEC_FILE_INFRA \
+  "$(printf '%s\ninstallation_probe_status=200\ninstallation_probe_remaining=4731\ninstallation_probe_message=' "$CRASH")"
 assert_token "probe 200 + crash -> stays NO_EXEC_FILE_INFRA" "" "" "@ABSENT" false NO_EXEC_FILE_INFRA \
   "$(printf '%s\ninstallation_probe_status=200\ninstallation_probe_message=' "$CRASH")"
 assert_token "probe 403 with an UNRELATED message -> NO_EXEC_FILE_INFRA" "" "" "@ABSENT" false NO_EXEC_FILE_INFRA \

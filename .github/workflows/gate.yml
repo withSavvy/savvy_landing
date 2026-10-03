@@ -624,7 +624,8 @@ jobs:
       # [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
       # Written BEFORE enforcement so gate_check_ran.py's no-execution-file arm can
       # tell "the action step itself crashed before Claude ran" (installation 403,
-      # install failure -> NO_EXEC_FILE_INFRA / INSTALLATION_RATE_LIMIT_INFRA) from
+      # install failure -> NO_EXEC_FILE_INFRA / INSTALLATION_RATE_LIMIT_INFRA /
+      # INSTALLATION_REST_THROTTLE_INFRA) from
       # "no evidence at all" (FAIL_HARD). Every value is interpolated from GitHub's
       # own steps.<id>.outcome context (the pre-continue-on-error result) or our own
       # probe script — never from model text — so a PR cannot spoof a crash.
@@ -737,9 +738,11 @@ jobs:
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
                          echo "::warning::review: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
-            INSTALLATION_RATE_LIMIT_INFRA)
+            INSTALLATION_RATE_LIMIT_INFRA|INSTALLATION_REST_THROTTLE_INFRA)
                          # The reset time comes from the live 403 probe (the only
-                         # read that sees the burst drain).
+                         # read that sees the burst drain). THROTTLE = the probe
+                         # still read remaining>0 (burst/secondary limit, clears in
+                         # about a minute); RATE_LIMIT = bucket drained (remaining=0).
                          RESET_EPOCH=$(grep -m1 '^installation_probe_reset_epoch=' "${REVIEW_DIAG_FILE}" 2>/dev/null | cut -d= -f2)
                          if [[ "$RESET_EPOCH" =~ ^[0-9]+$ ]]; then
                            RESET_HUMAN=$(date -u -d "@${RESET_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown (could not parse epoch '${RESET_EPOCH}')")
@@ -747,8 +750,8 @@ jobs:
                            RESET_HUMAN="unknown (no reset time recorded)"
                          fi
                          bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
-                           --detail "gate App installation hit GitHub's own API rate limit (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
-                         echo "::warning::review: GitHub App installation rate limit exhausted (resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
+                           --detail "gate App installation hit GitHub's own API rate limit [${TOKEN}] (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
+                         echo "::warning::review: GitHub App installation rate limit (${TOKEN}; resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer could not run (no result / crash; token=$TOKEN)" || true
                          echo "::warning::review: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
@@ -1289,9 +1292,11 @@ jobs:
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
                          echo "::warning::opus-gate: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
-            INSTALLATION_RATE_LIMIT_INFRA)
+            INSTALLATION_RATE_LIMIT_INFRA|INSTALLATION_REST_THROTTLE_INFRA)
                          # The reset time comes from the live 403 probe (the only
-                         # read that sees the burst drain).
+                         # read that sees the burst drain). THROTTLE = the probe
+                         # still read remaining>0 (burst/secondary limit, clears in
+                         # about a minute); RATE_LIMIT = bucket drained (remaining=0).
                          RESET_EPOCH=$(grep -m1 '^installation_probe_reset_epoch=' "${OPUS_DIAG_FILE}" 2>/dev/null | cut -d= -f2)
                          if [[ "$RESET_EPOCH" =~ ^[0-9]+$ ]]; then
                            RESET_HUMAN=$(date -u -d "@${RESET_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown (could not parse epoch '${RESET_EPOCH}')")
@@ -1299,8 +1304,8 @@ jobs:
                            RESET_HUMAN="unknown (no reset time recorded)"
                          fi
                          bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
-                           --detail "gate App installation hit GitHub's own API rate limit (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
-                         echo "::warning::opus-gate: GitHub App installation rate limit exhausted (resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; the binding verdict is INFRA and opus-verdict-recorded reads failure (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
+                           --detail "gate App installation hit GitHub's own API rate limit [${TOKEN}] (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
+                         echo "::warning::opus-gate: GitHub App installation rate limit (${TOKEN}; resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; the binding verdict is INFRA and opus-verdict-recorded reads failure (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer could not run (no result / crash; token=$TOKEN)" || true
                          echo "::warning::opus-gate: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
@@ -1488,7 +1493,20 @@ jobs:
   #  * Job-scoped permissions: statuses:write is held by this job (and by
   #    auto-arm-merge.yml's record-human-opus-override) and NOWHERE at workflow
   #    level. contents:read is only for the checkout; pull-requests:read is only
-  #    for the dependabot CI-surface file-list check in the post script.
+  #    for the CI-surface file-list read in the post script.
+  #  * RE-DERIVES THE CI SURFACE ITSELF: post_opus_verdict_recorded.sh fetches the
+  #    PR's changed files (paginated; previous_filename of renames included) from
+  #    the API and posts `failure` "FLOOR: CI-surface change — human release
+  #    required" if ANY path is CI-surface, whatever opus-gate's outputs say
+  #    (PASS, NOT_REQUIRED, dependabot skip can never green a CI-surface PR). An
+  #    API error, an empty list or a list at the API's 3000-file cap is failure
+  #    too. Only the SHA-bound human-approved override can turn it green.
+  #    [2026-10-02, savvy-backend#1595]
+  #  * NO PR-CONTROLLED NON-CI CODE RUNS HERE: this job executes only gh/jq/bash
+  #    and scripts under .github/scripts (CI surface) checked out from the base
+  #    branch tip. No npm/pnpm/yarn/bun/make, no repo test runner, no package
+  #    script, no node_modules, no PR-head checkout. The conventions test
+  #    asserts this; keep it that way (this job holds statuses:write).
   #  * Posted with GITHUB_TOKEN so the creator is github-actions[bot] (app
   #    15368), which is what the required-context pin accepts. Never app_id -1:
   #    that would let a PAT post it.

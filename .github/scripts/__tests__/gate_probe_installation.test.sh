@@ -52,8 +52,9 @@ rc=$(run_install Sara3 app-token-xyz)
 { [ "$rc" = "0" ] && grep -qx 'installation_probe_status=403' "$TMP/probe_out" \
   && grep -qx 'installation_probe_remaining=0' "$TMP/probe_out" \
   && grep -qx 'installation_probe_reset_epoch=1759447320' "$TMP/probe_out" \
+  && grep -qx 'installation_probe_resource=core' "$TMP/probe_out" \
   && grep -qx 'installation_probe_message=API rate limit exceeded for installation ID 146412380.' "$TMP/probe_out"; } && c=0 || c=1
-assert "403 with GitHub's installation rate-limit message -> status/remaining/reset/message captured" "$c"
+assert "403 with GitHub's installation rate-limit message -> status/remaining/reset/resource/message captured" "$c"
 grep -q 'api -i /users/Sara3' "$TMP/calls" && grep -qx 'token=app-token-xyz' "$TMP/calls" && c=0 || c=1
 assert "probe calls GET /users/<actor> with the APP token, not another credential" "$c"
 
@@ -61,6 +62,15 @@ assert "probe calls GET /users/<actor> with the APP token, not another credentia
 { printf 'schema=gate-reviewer-diag-v3\nfix_pass_outcome=failure\nreview_only_pass_outcome=skipped\n'; cat "$TMP/probe_out"; } > "$TMP/diag"
 [ "$(python3 "$CHECK" "" "" "" "false" "$TMP/diag")" = "INSTALLATION_RATE_LIMIT_INFRA" ] && c=0 || c=1
 assert "probe output piped into the diag file classifies as INSTALLATION_RATE_LIMIT_INFRA end to end" "$c"
+
+# remaining>0 on a rate-limit 403 -> a REST throttle, not a drained bucket.
+printf 'HTTP/2.0 403 Forbidden\r\nX-Ratelimit-Limit: 5000\r\nX-Ratelimit-Remaining: 4731\r\nX-Ratelimit-Reset: 1759447320\r\nX-Ratelimit-Resource: core\r\n\r\n{"message":"API rate limit exceeded for installation ID 146412380."}\n' > "$TMP/reply"
+rc=$(run_install Sara3 app-token-xyz)
+grep -qx 'installation_probe_remaining=4731' "$TMP/probe_out" && c=0 || c=1
+assert "403 with budget left -> remaining=4731 recorded" "$c"
+{ printf 'schema=gate-reviewer-diag-v3\nfix_pass_outcome=failure\nreview_only_pass_outcome=skipped\n'; cat "$TMP/probe_out"; } > "$TMP/diag"
+[ "$(python3 "$CHECK" "" "" "" "false" "$TMP/diag")" = "INSTALLATION_REST_THROTTLE_INFRA" ] && c=0 || c=1
+assert "403 + remaining>0 piped end to end -> INSTALLATION_REST_THROTTLE_INFRA" "$c"
 
 reply_200
 rc=$(run_install Sara3 app-token-xyz)
