@@ -14,20 +14,28 @@
 # usage: post_opus_verdict_recorded.sh <opus-gate result> <binding_verdict> \
 #                                      <actor> <head_sha> [run_url]
 # env:   GH_TOKEN (statuses:write + pull-requests:read), GITHUB_REPOSITORY,
-#        PR_NUMBER (only needed on the dependabot path), optional
+#        PR_NUMBER (required: the FLOOR re-derives the file list), optional
 #        GATE_RETRY_SLEEP (seconds between gh retries, default 2)
 #
 # STATE MAPPING — an explicit allowlist; everything else is `failure`:
+#   failure  FLOOR (checked FIRST, regardless of every upstream input): the
+#            recorder RE-DERIVES the PR's changed files ITSELF from the GitHub
+#            API (never from an event payload or an upstream job output) and, if
+#            ANY path (a rename's previous_filename included) matches the
+#            CI-surface regex (ci_surface_paths.sh), posts
+#            "FLOOR: CI-surface change — human release required". PASS,
+#            NOT_REQUIRED:trivial and the dependabot-by-design skip can never
+#            apply to a CI-surface PR. Fail-CLOSED: an API error, an empty list,
+#            a missing PR number or a list at the API's 3000-file cap is also
+#            failure. Only the SHA-bound `human-approved` override (below) can
+#            turn it green. [2026-10-02, savvy-backend#1595 / #1239]
 #   success  result=success AND verdict in {PASS, NOT_REQUIRED:trivial}
-#   success  result=skipped AND actor=dependabot[bot] AND the PR's LIVE file list
-#            matches NO CI-surface path (ci_surface_paths.sh). opus-gate's own
+#   success  result=skipped AND actor=dependabot[bot] (and, by the FLOOR above,
+#            the PR's live file list matches NO CI-surface path). opus-gate's own
 #            `if:` skips dependabot PRs by design, but this repo's dependabot.yml
 #            has only the `github-actions` ecosystem, so EVERY dependabot PR
 #            edits .github/workflows/ — a CI-surface change that must not get a
-#            free pass. [2026-10-02 review fix, savvy-backend#1595 / #1239]
-#   failure  dependabot + a CI-surface path (or an unreadable file list):
-#            "opus-gate floor block (dependabot CI-surface)"; released by a
-#            verified `human-approved` (SHA-bound override) or break-glass.
+#            free pass: those post the FLOOR failure.
 #   failure  INFRA:<TOKEN>   description "opus-gate infra-neutral (<TOKEN>)"
 #            ROUTE_HUMAN / FLOOR / FAIL
 #            cancelled, skipped (non-dependabot), failure, empty, unknown
@@ -56,6 +64,9 @@ RUN_URL="${5:-}"
 CONTEXT="opus-verdict-recorded"
 OVERRIDE_PREFIX="human-override"
 RETRY_SLEEP="${GATE_RETRY_SLEEP:-2}"
+# GET /pulls/{n}/files returns at most 3000 files; a list that long may hide a
+# CI-surface path, so it is treated as unreadable (fail-closed).
+PR_FILES_API_CAP=3000
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${GITHUB_REPOSITORY:-}"
 PR="${PR_NUMBER:-}"
@@ -71,27 +82,41 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
-# --- decide state + description (pure; no network) -------------------------
+# --- re-derive the CI-surface floor from the API (never from upstream) --------
+# PR files, one per line, prefixed `F:` (filename) / `P:` (previous_filename of
+# a rename, so moving a file OUT of the CI surface is still a CI-surface change).
+FLOOR_DESC=""
+fetch_pr_files() {
+  printf '%s' "$PR" | grep -Eq '^[0-9]+$' || return 1
+  bash "$SCRIPT_DIR/gh_retry.sh" --retries 2 --sleep "$RETRY_SLEEP" -- \
+    gh api --paginate "repos/${REPO}/pulls/${PR}/files?per_page=100" \
+    --jq '.[] | ("F:" + .filename), (if .previous_filename then "P:" + .previous_filename else empty end)' 2>/dev/null
+}
+if PR_FILES="$(fetch_pr_files)"; then
+  FILE_COUNT="$(printf '%s\n' "$PR_FILES" | grep -c '^F:' || true)"
+  if [ "${FILE_COUNT:-0}" -eq 0 ]; then
+    FLOOR_DESC="FLOOR: could not read PR files (empty list) — human release required"
+  elif [ "$FILE_COUNT" -ge "$PR_FILES_API_CAP" ]; then
+    FLOOR_DESC="FLOOR: PR file list truncated at the API cap — human release required"
+  elif printf '%s\n' "$PR_FILES" | sed 's/^[FP]://' | grep -Eq "$CI_SURFACE_REGEX"; then
+    FLOOR_DESC="FLOOR: CI-surface change — human release required"
+  fi
+else
+  FLOOR_DESC="FLOOR: could not read PR files — human release required"
+fi
+
+# --- decide state + description (pure; no further network) -----------------
 STATE="failure"
 DESC="opus-gate produced no binding verdict"
 
-if [ "$RESULT" = "success" ] && { [ "$VERDICT" = "PASS" ] || [ "$VERDICT" = "NOT_REQUIRED:trivial" ]; }; then
+if [ -n "$FLOOR_DESC" ]; then
+  DESC="$FLOOR_DESC"
+elif [ "$RESULT" = "success" ] && { [ "$VERDICT" = "PASS" ] || [ "$VERDICT" = "NOT_REQUIRED:trivial" ]; }; then
   STATE="success"
   if [ "$VERDICT" = "PASS" ]; then DESC="opus-gate PASS"; else DESC="opus-gate not required (trivial PR)"; fi
 elif [ "$RESULT" = "skipped" ] && [ "$ACTOR" = "dependabot[bot]" ]; then
-  # Live file list, never an event payload. Fail-closed: no PR number, an API
-  # error, or ANY CI-surface path means failure (a human then releases it).
-  DESC="opus-gate floor block (dependabot: could not read PR files)"
-  if printf '%s' "$PR" | grep -Eq '^[0-9]+$' && \
-     PR_FILES="$(bash "$SCRIPT_DIR/gh_retry.sh" --retries 2 --sleep "$RETRY_SLEEP" -- \
-        gh api "repos/${REPO}/pulls/${PR}/files" --paginate --jq '.[].filename' 2>/dev/null)"; then
-    if printf '%s\n' "$PR_FILES" | grep -Eq "$CI_SURFACE_REGEX"; then
-      DESC="opus-gate floor block (dependabot CI-surface)"
-    else
-      STATE="success"
-      DESC="opus-gate skipped by design (dependabot, no CI-surface paths)"
-    fi
-  fi
+  STATE="success"
+  DESC="opus-gate skipped by design (dependabot, no CI-surface paths)"
 else
   case "$VERDICT" in
     INFRA:*)

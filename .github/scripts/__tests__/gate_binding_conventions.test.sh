@@ -129,7 +129,7 @@ check("the review enforce step has an id and writes its token output",
 print("--- the recorder job ---")
 check("exists, needs only opus-gate", rec.get("needs") in (["opus-gate"], "opus-gate"))
 check("its job-level `if` is exactly !cancelled()", norm_if(rec.get("if")) == "!cancelled()")
-check("job-scoped permissions: statuses write + contents read + pull-requests read (dependabot file list), nothing else",
+check("job-scoped permissions: statuses write + contents read + pull-requests read (floor file-list read), nothing else",
       rec.get("permissions") == {"contents": "read", "pull-requests": "read", "statuses": "write"})
 check("display name is not the required context name", rec.get("name") == "record opus verdict")
 check("runs on this repo's CI_RUNNER convention, never the CI_RUNNER_OVERFLOW chain",
@@ -146,6 +146,39 @@ check("passes PR-derived values through env, never inline in the run: script",
       and post[0]["env"].get("BINDING_VERDICT") == "${{ needs.opus-gate.outputs.binding_verdict }}"
       and post[0]["env"].get("PR_NUMBER") == "${{ github.event.pull_request.number }}")
 
+print("--- the recorder runs no PR-controlled non-CI code and re-derives the floor itself ---")
+FORBIDDEN = re.compile(r"\b(npm|npx|pnpm|yarn|bun|bunx|make|node|pip3?|python3?|pytest|jest|vitest|cargo|go|mvn|gradle)\b|node_modules|package\.json|Makefile")
+def code_lines(path):
+    out = []
+    for line in open(path).read().splitlines():
+        t = line.strip()
+        if not t or t.startswith("#"):
+            continue
+        out.append(t)
+    return "\n".join(out)
+uses = [s.get("uses", "") for s in rsteps2 if s.get("uses")]
+check("the recorder's only `uses:` is actions/checkout (no setup-node, no composite/third-party action)",
+      uses and all(u.startswith("actions/checkout@") for u in uses))
+ck = [s for s in rsteps2 if "actions/checkout" in s.get("uses", "")]
+check("the recorder checkout is sparse to .github/scripts only (no node_modules, no repo tree) with no persisted credentials",
+      len(ck) == 1 and ck[0].get("with", {}).get("sparse-checkout") == ".github/scripts"
+      and ck[0]["with"].get("persist-credentials") is False)
+check("no recorder step sets working-directory or an `env` NODE_OPTIONS/BASH_ENV style injection",
+      not any("working-directory" in s or any(k in ("NODE_OPTIONS", "BASH_ENV", "ENV", "LD_PRELOAD") for k in s.get("env", {})) for s in rsteps2))
+check("no recorder `run:` invokes a package manager, make, node/python or a test runner",
+      all(not FORBIDDEN.search(s.get("run", "")) for s in rsteps2))
+for name in ("post_opus_verdict_recorded.sh", "gh_retry.sh", "ci_surface_paths.sh"):
+    check(f"{name} (executed by the recorder) uses no package manager, make, node/python or test runner",
+          not FORBIDDEN.search(code_lines(os.path.join(SC, name))))
+postsrc = open(os.path.join(SC, "post_opus_verdict_recorded.sh")).read()
+check("post_opus_verdict_recorded.sh re-derives the file list from the API (pulls/<n>/files, paginated, previous_filename)",
+      'pulls/${PR}/files' in postsrc and "--paginate" in postsrc and "previous_filename" in postsrc)
+check("the floor posts the exact FLOOR description and is decided BEFORE the success allowlist",
+      "FLOOR: CI-surface change — human release required" in postsrc
+      and postsrc.index('if [ -n "$FLOOR_DESC" ]') < postsrc.index('elif [ "$RESULT" = "success"'))
+check("the recorder takes NO file list from the event payload or an upstream output",
+      "changed_files" not in str(rsteps2) and "files" not in str([s.get("env", {}) for s in rsteps2]).lower())
+
 print("--- statuses: write holders ---")
 holders = []
 wf_level = []
@@ -161,6 +194,17 @@ for fn in sorted(os.listdir(WF)):
         if isinstance(jp, dict) and jp.get("statuses") == "write":
             holders.append(f"{fn}:{jid}")
 check("no workflow grants statuses at workflow level", wf_level == [])
+writeall = []
+for fn in sorted(os.listdir(WF)):
+    if not fn.endswith((".yml", ".yaml")):
+        continue
+    _, doc = load(fn)
+    if doc.get("permissions") == "write-all":
+        writeall.append(fn)
+    for jid, job in (doc.get("jobs") or {}).items():
+        if job.get("permissions") == "write-all":
+            writeall.append(f"{fn}:{jid}")
+check("no workflow or job uses `permissions: write-all` (it would carry statuses: write)", writeall == [])
 check("statuses: write is held by exactly the recorder and the override",
       sorted(holders) == ["auto-arm-merge.yml:record-human-opus-override", "gate.yml:record-opus-verdict"])
 named = []
@@ -267,7 +311,7 @@ check("ci.yml's required `gate` job runs every .github/scripts/__tests__/*.test.
       any(".github/scripts/__tests__/*.test.sh" in s.get("run", "") and "rc=1" in s.get("run", "")
           and 'exit "$rc"' in s.get("run", "") for s in cisteps))
 dep = [s for s in rsteps2 if "post_opus_verdict_recorded.sh" in s.get("run", "")]
-check("the dependabot success path needs PR_NUMBER (live file list) — passed to the post script",
+check("the recorder floor needs PR_NUMBER (live file list) — passed to the post script",
       len(dep) == 1 and "PR_NUMBER" in dep[0].get("env", {}))
 
 print("--- scripts exist and are executable ---")
