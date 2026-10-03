@@ -30,7 +30,8 @@ set_files() {
   set_pr "${2-main}" "$(jq length "$SB/files.json")"
 }
 # set_pr BASE_REF CHANGED_FILES — the live PR the fake API returns.
-set_pr() { echo "{\"base\":{\"ref\":\"$1\"},\"changed_files\":$2}" > "$SB/pull.json"; }
+# 3rd arg = live head sha (defaults to the event head $SHA).
+set_pr() { echo "{\"base\":{\"ref\":\"$1\"},\"changed_files\":$2,\"head\":{\"sha\":\"${3:-$SHA}\"}}" > "$SB/pull.json"; }
 
 # setup: a fake gh. GET .../statuses returns $SB/existing (the pre-rendered
 # "state|creator|description" line, empty = no prior status); POST
@@ -50,11 +51,12 @@ if [ "\$1" = "api" ] && [ "\$2" = "-X" ] && [ "\$3" = "POST" ]; then
 fi
 if [ "\$1" = "api" ] && [[ "\$*" == *"/pulls/"*"/files"* ]]; then
   [ -f "$SB/files_fail" ] && { echo '{"message":"boom","status":"502"}' >&2; exit 1; }
-  SB_FILE="$SB/files.json" jqrun "\$@"; exit 0
+  : > "$SB/files_read"; SB_FILE="$SB/files.json" jqrun "\$@"; exit 0
 fi
 if [ "\$1" = "api" ] && [[ "\$2" == repos/*/pulls/[0-9]* ]]; then
   [ -f "$SB/pull_fail" ] && { echo '{"message":"boom","status":"502"}' >&2; exit 1; }
-  SB_FILE="$SB/pull.json" jqrun "\$@"; exit 0
+  PF="$SB/pull.json"; [ -f "$SB/files_read" ] && [ -f "$SB/pull_after.json" ] && PF="$SB/pull_after.json"
+  SB_FILE="\$PF" jqrun "\$@"; exit 0
 fi
 if [ "\$1" = "api" ] && [[ "\$2" =~ ^repos/[^/]+/[^/]+$ ]]; then
   [ -f "$SB/repo_fail" ] && { echo '{"message":"boom","status":"502"}' >&2; exit 1; }
@@ -186,10 +188,38 @@ rc=$(run success PASS Sara3)
 { [ "$rc" = "1" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
 assert "repo (default branch) read fails -> exit 1, nothing posted (fail-closed)" "$c"
 teardown
-setup; echo '{"base":{"ref":"main"}}' > "$SB/pull.json"
+setup; echo '{"base":{"ref":"main"},"head":{"sha":"'"$SHA"'"}}' > "$SB/pull.json"
 rc=$(run success PASS Sara3)
 { [ "$rc" = "1" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
 assert "changed_files missing from the live PR -> exit 1, nothing posted" "$c"
+teardown
+
+echo "--- stale-run guard: live head must equal the event head ---"
+OTHER="fedcba9876543210fedcba9876543210fedcba98"
+setup; set_pr main 1 "$OTHER"   # clean files, but the PR head has moved on
+rc=$(run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ] && ! grep -q '/files' "$SB/calls" && grep -q 'stale run' "$SB/out"; } && c=0 || c=1
+assert "re-run case: live head != event head, clean stubbed files -> NO post, exit 0" "$c"
+teardown
+setup; set_files ".github/scripts/gh_retry.sh"; set_pr main 1 "$OTHER"
+rc=$(run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
+assert "live head != event head -> no post (neither success nor failure on the stale SHA)" "$c"
+teardown
+setup; set_pr main 1; set_pr main 1 "$OTHER"; cp "$SB/pull.json" "$SB/pull_after.json"; set_pr main 1
+rc=$(run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
+assert "head moves DURING the files fetch (push race) -> NO post" "$c"
+teardown
+setup; set_pr main 1; cp "$SB/pull.json" "$SB/pull_after.json"
+rc=$(run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ "$(state_of)" = "success" ]; } && c=0 || c=1
+assert "head stable across both reads -> success still posts" "$c"
+teardown
+setup; echo '{"base":{"ref":"main"},"changed_files":1}' > "$SB/pull.json"
+rc=$(run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
+assert "live head.sha missing -> treated as stale, nothing posted" "$c"
 teardown
 
 echo "--- trivial cap: > 100 changed files is never trivial ---"

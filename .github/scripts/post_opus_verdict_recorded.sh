@@ -21,7 +21,9 @@
 # for a PR whose LIVE base (API, not the event payload) is the repo's default
 # branch. Statuses belong to the SHA, not the PR, and gate.yml runs for a PR into
 # any branch except develop. The job `if:` has the same guard; this re-checks it
-# live and fails CLOSED (exit 1, nothing posted) when either read fails.
+# live and fails CLOSED (exit 1, nothing posted) when either read fails. The live
+# head.sha must also equal HEAD_SHA (read before AND after the files fetch), else
+# the run is stale and posts nothing (a re-run of an old run must not vouch for it).
 #
 # STATE MAPPING — an explicit allowlist; everything else is `failure`:
 #   failure  FLOOR (decided FIRST, whatever every upstream input says): the
@@ -98,13 +100,14 @@ gh_api_lines() {
 }
 
 # --- live base guard: mint a status only for a PR into the default branch -----
-if ! PR_LIVE="$(gh_api_lines "repos/${REPO}/pulls/${PR}" --jq '.base.ref, .changed_files')" \
+if ! PR_LIVE="$(gh_api_lines "repos/${REPO}/pulls/${PR}" --jq '.base.ref, .changed_files, .head.sha')" \
    || ! DEFAULT_BRANCH="$(gh_api_lines "repos/${REPO}" --jq '.default_branch' | tail -n1)"; then
   echo "::error::post_opus_verdict_recorded: could not read the live PR / repo — refusing to post (fail-closed)."
   exit 1
 fi
 BASE_REF="$(printf '%s\n' "$PR_LIVE" | head -n1)"
 CHANGED_FILES="$(printf '%s\n' "$PR_LIVE" | sed -n '2p')"
+LIVE_HEAD="$(printf '%s\n' "$PR_LIVE" | sed -n '3p')"
 if [ -z "$BASE_REF" ] || [ -z "$DEFAULT_BRANCH" ] || ! printf '%s' "$CHANGED_FILES" | grep -Eq '^[0-9]+$'; then
   echo "::error::post_opus_verdict_recorded: live PR base ('${BASE_REF}'), default branch ('${DEFAULT_BRANCH}') or changed_files ('${CHANGED_FILES}') unreadable — refusing to post (fail-closed)."
   exit 1
@@ -113,6 +116,15 @@ if [ "$BASE_REF" != "$DEFAULT_BRANCH" ]; then
   echo "post_opus_verdict_recorded: PR base '${BASE_REF}' is not the default branch '${DEFAULT_BRANCH}' — posting NO ${CONTEXT} status (statuses are SHA-global)."
   exit 0
 fi
+# STALE-RUN GUARD [2026-10-02, savvy-backend#1595]: the files list below is the
+# PR's LIVE head. A re-run of an old run (or an in-flight push race) carries an
+# old HEAD_SHA; judging it by a newer head's files could post success on a SHA
+# whose CI-surface edit is not in the list. Post nothing unless they match.
+stale_head() {
+  echo "::notice::post_opus_verdict_recorded: PR head moved (event ${HEAD_SHA:0:7}, live '${1:0:7}') — stale run, posting NO ${CONTEXT} status; the run for the live head decides."
+  exit 0
+}
+[ "$LIVE_HEAD" = "$HEAD_SHA" ] || stale_head "$LIVE_HEAD"
 
 # --- re-derive the CI-surface floor from the API (never from upstream) --------
 # `F:<filename>` per file, plus `P:<previous_filename>` for a rename, so moving a
@@ -131,6 +143,12 @@ if PR_FILES="$(gh_api_lines --paginate "repos/${REPO}/pulls/${PR}/files?per_page
 else
   FLOOR_DESC="FLOOR: could not read PR files — human release required"
 fi
+# Re-check the head AFTER the (paginated) files read: a push mid-fetch is stale too.
+if ! LIVE_HEAD2="$(gh_api_lines "repos/${REPO}/pulls/${PR}" --jq '.head.sha' | tail -n1)"; then
+  echo "::error::post_opus_verdict_recorded: could not re-read the live PR head — refusing to post (fail-closed)."
+  exit 1
+fi
+[ "$LIVE_HEAD2" = "$HEAD_SHA" ] || stale_head "$LIVE_HEAD2"
 
 # --- decide state + description (pure; no further network) --------------------
 STATE="failure"
