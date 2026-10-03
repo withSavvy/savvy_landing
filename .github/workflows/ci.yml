@@ -8,12 +8,21 @@ concurrency:
   group: ci-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Read-only token [2026-10-02 review fix, savvy-backend#1595]: this required job
+# runs repo test suites and python, i.e. code a PR that touches no CI surface can
+# influence. It needs no write scope (the repo default is already read; this
+# makes it explicit and independent of the repo setting).
+permissions:
+  contents: read
+
 jobs:
   gate:
     name: gate
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Verify .assetsignore allowlist
         run: bash .github/scripts/verify-assetsignore.sh
@@ -31,10 +40,20 @@ jobs:
       # drop the conclude step or widen statuses:write. They are stubbed-gh bash
       # tests (no network); PyYAML ships on hosted runners and is installed
       # otherwise. A failing suite fails this required `gate` job.
+      #
+      # `python3 -c` / `python3 -` put the CWD (the PR checkout root) FIRST on
+      # sys.path, so a PR adding a top-level yaml.py (or pip.py) would run
+      # arbitrary code in this required job without touching any CI surface. So
+      # python is only ever started from an empty temp dir, with PYTHONSAFEPATH=1
+      # as a second layer (Python 3.11+); the tests themselves also run python
+      # from an empty temp dir.
       - name: Gate / merge-guard / recorder conventions tests
         run: |
           set -uo pipefail
-          python3 -c 'import yaml' 2>/dev/null || python3 -m pip install --quiet pyyaml
+          export PYTHONSAFEPATH=1
+          SAFE_DIR="$(mktemp -d)"
+          ( cd "$SAFE_DIR" && python3 -c 'import yaml' ) 2>/dev/null \
+            || ( cd "$SAFE_DIR" && python3 -m pip install --quiet pyyaml )
           rc=0
           for t in .github/scripts/__tests__/*.test.sh; do
             echo "::group::$t"

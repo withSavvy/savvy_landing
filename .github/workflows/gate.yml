@@ -837,6 +837,28 @@ jobs:
             gh pr comment "$PR_NUMBER" --body-file /tmp/body_sonnet.md >/dev/null 2>&1 || true
           fi
 
+      # ── TRUSTED conclude SCRIPTS [2026-10-02 review fix, savvy-backend#1595] ──
+      # The model steps above run with a reviewer that may hold shell access in
+      # THIS job (prompt injection from a non-CI PR), and the workspace scripts
+      # below decide what the job concludes. So the scripts that compute the
+      # verdict are re-fetched here, AFTER every model step, from the DEFAULT
+      # branch tip into a fresh directory (any pre-existing one is removed first)
+      # and run with a scrubbed environment (`env -i`, no BASH_ENV/ENV/PATH
+      # injection, `bash --noprofile --norc`). This narrows, it does not close:
+      # see the PR body's residual risk (a Bash-capable model in the same job).
+      - name: Remove any pre-existing trusted-scripts directory
+        if: always()
+        run: rm -rf .gate-trusted
+
+      - name: Fetch conclude scripts from the default branch tip (trusted, after the model steps)
+        if: always()
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .gate-trusted
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
       # ── CONCLUDE (MUST stay the LAST step of this job) ───────────────────
       # [2026-10-02, savvy-backend#1595 / tracking #1239] Every infra arm of
       # "Enforce review actually ran" exits 0 by design, so a reviewer crash used
@@ -852,7 +874,11 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           FLOOR_OUTCOME: ${{ steps.floor_check.conclusion }}
           ENFORCE_TOKEN: ${{ steps.enforce_review_ran.outputs.token }}
-        run: bash .github/scripts/gate_review_conclude.sh
+        run: |
+          set -uo pipefail
+          env -i PATH=/usr/bin:/bin GITHUB_OUTPUT="$GITHUB_OUTPUT" \
+            JOB_STATUS="$JOB_STATUS" FLOOR_OUTCOME="$FLOOR_OUTCOME" ENFORCE_TOKEN="$ENFORCE_TOKEN" \
+            bash --noprofile --norc .gate-trusted/.github/scripts/gate_review_conclude.sh
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 2  —  'opus-gate'  Opus FINAL DECIDER + FIXER #2  (BINDING terminal gate)
@@ -1428,6 +1454,28 @@ jobs:
             gh pr comment "$PR_NUMBER" --body-file /tmp/body_opus.md >/dev/null 2>&1 || true
           fi
 
+      # ── TRUSTED binding-verdict SCRIPTS [2026-10-02 review fix, savvy-backend#1595] ──
+      # The model steps above run with a reviewer that may hold shell access in
+      # THIS job (prompt injection from a non-CI PR), and the workspace scripts
+      # below decide what the job concludes. So the scripts that compute the
+      # verdict are re-fetched here, AFTER every model step, from the DEFAULT
+      # branch tip into a fresh directory (any pre-existing one is removed first)
+      # and run with a scrubbed environment (`env -i`, no BASH_ENV/ENV/PATH
+      # injection, `bash --noprofile --norc`). This narrows, it does not close:
+      # see the PR body's residual risk (a Bash-capable model in the same job).
+      - name: Remove any pre-existing trusted-scripts directory
+        if: always()
+        run: rm -rf .gate-trusted
+
+      - name: Fetch binding-verdict scripts from the default branch tip (trusted, after the model steps)
+        if: always()
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .gate-trusted
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
       # ── BINDING VERDICT + CONCLUDE (these two MUST stay the LAST steps) ───
       # [2026-10-02, savvy-backend#1595 / tracking #1239] #1595 was bot-merged at
       # 22:29:20Z; its opus-gate crashed (NO_EXEC_FILE_INFRA) four minutes later
@@ -1453,7 +1501,10 @@ jobs:
           ENFORCE_VERDICT_OUTCOME: ${{ steps.enforce_verdict.outcome }}
         run: |
           set -uo pipefail
-          VERDICT="$(bash .github/scripts/gate_binding_verdict.sh)" || VERDICT=""
+          VERDICT="$(env -i PATH=/usr/bin:/bin \
+            JOB_STATUS="$JOB_STATUS" FLOOR_OUTCOME="$FLOOR_OUTCOME" RISK_TIER="$RISK_TIER" \
+            ENFORCE_TOKEN="$ENFORCE_TOKEN" ENFORCE_VERDICT_OUTCOME="$ENFORCE_VERDICT_OUTCOME" \
+            bash --noprofile --norc .gate-trusted/.github/scripts/gate_binding_verdict.sh)" || VERDICT=""
           [ -n "$VERDICT" ] || VERDICT="FAIL"
           echo "binding_verdict=$VERDICT" >> "$GITHUB_OUTPUT"
           echo "opus-gate binding verdict: $VERDICT"
@@ -1493,7 +1544,14 @@ jobs:
   #  * Job-scoped permissions: statuses:write is held by this job (and by
   #    auto-arm-merge.yml's record-human-opus-override) and NOWHERE at workflow
   #    level. contents:read is only for the checkout; pull-requests:read is only
-  #    for the CI-surface file-list read in the post script.
+  #    for the CI-surface file-list read in the post script; issues:read only
+  #    for re-verifying a claimed human override.
+  #  * DEFAULT-BRANCH ONLY [2026-10-02 review fix]: scripts come from the DEFAULT
+  #    branch tip and the post script mints a status only when the PR's base IS
+  #    the default branch (statuses are SHA-global, this workflow runs for PRs
+  #    into any non-develop branch). A claimed `human-override` status is
+  #    RE-VERIFIED from live API data before it is left in place; a forged one
+  #    is overwritten.
   #  * RE-DERIVES THE CI SURFACE ITSELF: post_opus_verdict_recorded.sh fetches the
   #    PR's changed files (paginated; previous_filename of renames included) from
   #    the API and posts `failure` "FLOOR: CI-surface change — human release
@@ -1510,10 +1568,10 @@ jobs:
   #  * Posted with GITHUB_TOKEN so the creator is github-actions[bot] (app
   #    15368), which is what the required-context pin accepts. Never app_id -1:
   #    that would let a PAT post it.
-  #  * KNOWN LIMIT — NOTHING IN THIS FILE STOPS A PR FROM SPOOFING THE STATUS.
-  #    `pull_request` workflows run from the PR's own merge ref, so a same-repo PR
-  #    can edit THIS file (or merge-guard.yml) and add a job with
-  #    `permissions: {statuses: write}` that POSTs opus-verdict-recorded=success
+  #  * KNOWN LIMIT — NOTHING IN THIS FILE STOPS A PR THAT EDITS CI SURFACE FROM
+  #    SPOOFING THE STATUS. `pull_request` workflows run from the PR's own merge
+  #    ref, so a same-repo PR can edit THIS file (or merge-guard.yml) and add a job
+  #    with `permissions: {statuses: write}` that POSTs opus-verdict-recorded=success
   #    with GITHUB_TOKEN; the creator is then github-actions[bot] and passes the
   #    integration_id pin. merge-guard is NOT a required check in this repo
   #    (ruleset 23711370 requires only gate, workflow-safety and Gitleaks) and,
@@ -1522,33 +1580,57 @@ jobs:
   #    `/.github/` and `/.claude/scripts/` are owned by @Sara3, and the Sara-only
   #    required-flip step turns that review requirement on in the same change
   #    that makes this context required. Do not flip the context without it.
+  #  * SIDE-BRANCH RESIDUAL (statuses are SHA-global): a writer can push a branch
+  #    whose OWN gate.yml is edited, open a PR into it, and post any status on a
+  #    SHA that a later PR into main shares. The default-branch checkout + the
+  #    base==default guard close the script-only variant of this; the
+  #    workflow-edited variant is the same class as the limit above. Real
+  #    remedies: restrict branch creation/push by ruleset, or mint the required
+  #    status from a `workflow_run` job (it runs from the default branch) holding
+  #    an App key in an environment limited to main.
   #  * The recorder SCRIPTS (post_opus_verdict_recorded.sh, gh_retry.sh,
-  #    ci_surface_paths.sh) are checked out from the BASE BRANCH TIP, not the PR
-  #    merge ref, so a PR cannot weaken those scripts in order to be graded by
-  #    them. That does NOT make the job trustworthy against a PR that edits this
-  #    workflow file (see above). The base BRANCH tip is used rather than
-  #    pull_request.base.sha because base.sha is frozen at PR-open time: a PR
-  #    opened before this change merged would check out a tree with no recorder
-  #    script at all and sit at "Expected" with no working override.
-  #  * Runner: this repo's `vars.CI_RUNNER || 'ubuntu-latest'` convention. NOT the
-  #    backend's CI_RUNNER_OVERFLOW chain — here CI_RUNNER_OVERFLOW points at the
-  #    scarce self-hosted pool (see merge-guard.yml's runs-on rationale).
+  #    ci_surface_paths.sh, verify_human_approved.sh) are checked out from the
+  #    DEFAULT BRANCH TIP, not the PR merge ref, so a PR cannot weaken those scripts
+  #    in order to be graded by them. That does NOT make the job trustworthy
+  #    against a PR that edits this workflow file (see above). The branch tip is
+  #    used rather than pull_request.base.sha because base.sha is frozen at
+  #    PR-open time: a PR opened before this change merged would check out a tree
+  #    with no recorder script at all and sit at "Expected" with no working
+  #    override.
+  #  * Runner: literal `ubuntu-latest` (hosted, ephemeral) so a statuses:write job
+  #    never shares a persistent host with PR-influenced jobs; NOT `vars.CI_RUNNER`
+  #    and NOT the CI_RUNNER_OVERFLOW pool (see merge-guard.yml's rationale).
   # ---------------------------------------------------------------------------
   record-opus-verdict:
     name: record opus verdict
     needs: [opus-gate]
     if: ${{ !cancelled() }}
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    # Literal GitHub-hosted runner, deliberately NOT `vars.CI_RUNNER` [2026-10-02
+    # review fix]: this job holds statuses:write, so it must never share a
+    # persistent (self-hosted, non-ephemeral) host with a PR-influenced job that
+    # could have planted a poisoned gh/jq/bash on it. merge-guard.yml is pinned
+    # the same way.
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: read
+      # issues:read is for the live `human-approved` adder lookup
+      # (verify_human_approved.sh), used only to RE-VERIFY a claimed override.
+      issues: read
       statuses: write
     steps:
-      - name: Checkout recorder scripts from the base branch tip (trusted)
+      # DEFAULT branch tip, NOT github.base_ref [2026-10-02 review fix]. gate.yml
+      # runs for a PR into ANY branch except develop and commit statuses belong
+      # to the SHA, so a writer could push branch X (= main + an edited
+      # post_opus_verdict_recorded.sh), open feat->X, and have a base_ref
+      # checkout run the edited script with statuses:write on feat's head SHA;
+      # a second PR feat->main with that SHA inherits the success. The default
+      # branch is the protected one, so its scripts are the trusted ones.
+      - name: Checkout recorder scripts from the default branch tip (trusted)
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.base_ref }}
+          ref: ${{ github.event.repository.default_branch }}
           sparse-checkout: .github/scripts
           persist-credentials: false
 
@@ -1560,6 +1642,13 @@ jobs:
           ACTOR: ${{ github.actor }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # The script posts NOTHING unless BASE_REF == DEFAULT_BRANCH.
+          BASE_REF: ${{ github.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          # Used only to re-verify a claimed human override (never trusted from
+          # the status description): the approval must be newer than this event.
+          PR_UPDATED_AT: ${{ github.event.pull_request.updated_at }}
+          TIER_B_RELEASE_ACTORS: ${{ vars.TIER_B_RELEASE_ACTORS }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -uo pipefail

@@ -3,6 +3,9 @@
 # poster. [savvy-backend#1595 / tracking #1239] Success ONLY for the explicit
 # allowlist; a crash/infra/anything-else is failure; a human override on the
 # same SHA is never clobbered; a POST failure exits 1.
+# [2026-10-02 review fix] A status is minted ONLY for a PR into the default
+# branch, and a `human-override` description is re-verified from live API data
+# before it is left in place (a forged one is overwritten).
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +33,10 @@ set_files() {
 setup() {
   SB="$(mktemp -d)"; mkdir -p "$SB/bin"; : > "$SB/posts"; : > "$SB/calls"; : > "$SB/existing"
   set_files 'package.json'
+  # live state a VERIFIED human override needs: an allowlisted adder, the label
+  # still on the PR, the live head == SHA, the label newer than the run's event
+  echo '[{"event":"labeled","label":{"name":"human-approved"},"actor":{"login":"Sara3"},"created_at":"2026-10-02T10:00:00Z"}]' > "$SB/events.json"
+  echo "{\"head\":{\"sha\":\"$SHA\"},\"labels\":[{\"name\":\"human-approved\"}]}" > "$SB/pull.json"
   cat > "$SB/bin/gh" <<STUB
 #!/bin/bash
 echo "\$*" >> "$SB/calls"
@@ -42,6 +49,18 @@ if [ "\$1" = "api" ] && [[ "\$*" == *"/pulls/"*"/files"* ]]; then
   expr=""; prev=""
   for a in "\$@"; do [ "\$prev" = "--jq" ] && expr="\$a"; prev="\$a"; done
   jq -r "\$expr" "$SB/files.json"; exit 0
+fi
+if [ "\$1" = "api" ] && [[ "\$*" == *"/issues/"*"/events"* ]]; then
+  [ -f "$SB/events_fail" ] && { echo '{"message":"boom","status":"502"}' >&2; exit 1; }
+  expr=""; prev=""
+  for a in "\$@"; do [ "\$prev" = "--jq" ] && expr="\$a"; prev="\$a"; done
+  jq -r "\$expr" "$SB/events.json"; exit 0
+fi
+if [ "\$1" = "api" ] && [[ "\$2" == repos/*/pulls/[0-9]* ]] && [[ "\$2" != */files* ]]; then
+  [ -f "$SB/pull_fail" ] && { echo '{"message":"boom","status":"502"}' >&2; exit 1; }
+  expr=""; prev=""
+  for a in "\$@"; do [ "\$prev" = "--jq" ] && expr="\$a"; prev="\$a"; done
+  jq -r "\$expr" "$SB/pull.json"; exit 0
 fi
 if [ "\$1" = "api" ] && [[ "\$*" == *"/statuses?per_page"* ]]; then
   [ -f "$SB/read_fail" ] && { echo '{"message":"boom","status":"500"}' >&2; exit 1; }
@@ -56,6 +75,8 @@ teardown() { rm -rf "$SB"; }
 # run RESULT VERDICT ACTOR [SHA] — prints exit code; posts land in $SB/posts
 run() {
   PATH="$SB/bin:$PATH" GITHUB_REPOSITORY="withSavvy/savvy_landing" GATE_RETRY_SLEEP=0 PR_NUMBER="${T_PR-7}" \
+    BASE_REF="${T_BASE-main}" DEFAULT_BRANCH="${T_DEFAULT-main}" PR_UPDATED_AT="${T_EVENT_TS-2026-10-02T09:00:00Z}" \
+    TIER_B_RELEASE_ACTORS="${T_ACTORS-Sara3}" \
     bash "$SCRIPT" "$1" "$2" "$3" "${4:-$SHA}" "https://github.com/withSavvy/savvy_landing/actions/runs/1" > "$SB/out" 2>&1
   echo $?
 }
@@ -119,7 +140,7 @@ teardown
 setup; set_files ".github/workflows/ci.yml"; echo "success|github-actions[bot]|human-override by Sara3 for 0123456" > "$SB/existing"
 rc=$(run failure "INFRA:NO_EXEC_FILE_INFRA" Sara3)
 { [ "$rc" = "0" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
-assert "CI-surface PR + SHA-bound human-override already posted -> left in place (the only way green)" "$c"
+assert "CI-surface PR + verified SHA-bound human-override already posted -> left in place (the only way green)" "$c"
 teardown
 
 echo "--- dependabot (this repo's dependabot only bumps github-actions) ---"
@@ -205,6 +226,66 @@ setup; echo "failure|github-actions[bot]|human-override by Sara3 for 0123456" > 
 rc=$(run success PASS Sara3)
 { [ "$rc" = "0" ] && [ "$(state_of)" = "success" ]; } && c=0 || c=1
 assert "a failure-state status is not an override even if its text says human-override" "$c"
+teardown
+
+echo "--- a forged human-override is re-verified, never trusted from the description ---"
+FORGED="success|github-actions[bot]|human-override by Sara3 for 0123456"
+# forged DESC MUTATION-CMD [ENV...] — the status claims an override; MUTATION edits the live state
+forged_overwritten() {
+  local desc="$1" mutate="$2" rc c; shift 2
+  setup; echo "$FORGED" > "$SB/existing"; eval "$mutate"
+  rc=$(env "$@" bash -c "$(declare -f run state_of); SB='$SB' SHA='$SHA' SCRIPT='$SCRIPT'; run failure FAIL Sara3")
+  { [ "$rc" = "0" ] && [ "$(state_of)" = "failure" ]; } && c=0 || c=1
+  assert "$desc -> computed verdict posted over it" "$c"
+  teardown
+}
+forged_overwritten "forged override, nobody ever added human-approved (no labeled event)" 'echo "[]" > "$SB/events.json"' X=1
+forged_overwritten "forged override, label added by a NON-allowlisted login" 'echo "[{\"event\":\"labeled\",\"label\":{\"name\":\"human-approved\"},\"actor\":{\"login\":\"mallory\"},\"created_at\":\"2026-10-02T10:00:00Z\"}]" > "$SB/events.json"' X=1
+forged_overwritten "forged override, label added by a [bot] identity" 'echo "[{\"event\":\"labeled\",\"label\":{\"name\":\"human-approved\"},\"actor\":{\"login\":\"Sara3[bot]\"},\"created_at\":\"2026-10-02T10:00:00Z\"}]" > "$SB/events.json"' X=1
+forged_overwritten "forged override, allowlist unset (falls back to the repo owner, matches no human)" ':' T_ACTORS=
+forged_overwritten "forged override, human-approved label has been removed" 'echo "{\"head\":{\"sha\":\"$SHA\"},\"labels\":[]}" > "$SB/pull.json"' X=1
+forged_overwritten "forged override, live head moved to another SHA" 'echo "{\"head\":{\"sha\":\"ffffffffffffffffffffffffffffffffffffffff\"},\"labels\":[{\"name\":\"human-approved\"}]}" > "$SB/pull.json"' X=1
+forged_overwritten "forged override, approval is OLDER than this run's event (approved an earlier commit)" ':' T_EVENT_TS=2026-10-02T11:00:00Z
+forged_overwritten "forged override, approval in the SAME second as the event (fail-closed tie)" ':' T_EVENT_TS=2026-10-02T10:00:00Z
+forged_overwritten "forged override, PR_UPDATED_AT unset" ':' T_EVENT_TS=
+forged_overwritten "forged override, PR_UPDATED_AT malformed" ':' T_EVENT_TS=yesterday
+forged_overwritten "forged override, issue-events API error (fail-closed)" 'touch "$SB/events_fail"' X=1
+forged_overwritten "forged override, live PR read fails (fail-closed)" 'touch "$SB/pull_fail"' X=1
+setup; echo "$FORGED" > "$SB/existing"; set_files ".github/workflows/ci.yml"; echo "[]" > "$SB/events.json"
+rc=$(run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ "$(state_of)" = "failure" ] && [ "$(desc_of)" = "$FLOOR_DESC_WANT" ]; } && c=0 || c=1
+assert "forged override on a CI-surface PR with a real PASS -> FLOOR failure (the forgery cannot green it)" "$c"
+teardown
+setup; echo "$FORGED" > "$SB/existing"
+rc=$(run failure "INFRA:NO_EXEC_FILE_INFRA" Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ] && grep -q 'VERIFIED human override' "$SB/out"; } && c=0 || c=1
+assert "a fully verified override (allowlisted adder, label present, live head == SHA, approval newer) IS left in place" "$c"
+teardown
+
+echo "--- default-branch only: a status is minted only for a PR into the default branch ---"
+setup; rc=$(T_BASE=release run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ] && [ ! -s "$SB/calls" ]; } && c=0 || c=1
+assert "base != default branch + a real PASS -> NO post, NO API call, exit 0 (side-branch PR mints nothing)" "$c"
+teardown
+setup; rc=$(T_BASE=release run failure FAIL Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
+assert "base != default branch + a failing verdict -> NO post either (no failure on a SHA another PR may own)" "$c"
+teardown
+setup; rc=$(T_BASE=Main run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
+assert "branch comparison is exact (Main != main)" "$c"
+teardown
+setup; rc=$(T_BASE= run success PASS Sara3)
+{ [ "$rc" = "1" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
+assert "BASE_REF unset -> exit 1, no post (fail-closed)" "$c"
+teardown
+setup; rc=$(T_DEFAULT= run success PASS Sara3)
+{ [ "$rc" = "1" ] && [ ! -s "$SB/posts" ]; } && c=0 || c=1
+assert "DEFAULT_BRANCH unset -> exit 1, no post (fail-closed)" "$c"
+teardown
+setup; rc=$(T_BASE=main T_DEFAULT=main run success PASS Sara3)
+{ [ "$rc" = "0" ] && [ "$(state_of)" = "success" ]; } && c=0 || c=1
+assert "base == default branch -> posts normally" "$c"
 teardown
 
 echo "--- failures ---"

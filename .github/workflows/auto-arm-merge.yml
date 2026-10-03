@@ -310,28 +310,33 @@ jobs:
   #    required-context pin accepts.
   #
   # SECURITY: same header invariant as the job above — this job runs with the
-  # BASE repo's token on a PR event, so it checks out the BASE BRANCH TIP only
+  # BASE repo's token on a PR event, so it checks out the DEFAULT BRANCH TIP only
   # (never the PR head), reads the PR exclusively through the API, and takes
   # every PR value through `env:` (never interpolated into the `run:` line). Own
   # non-cancelling concurrency group: a queued override must not be cancelled
   # by a later label event.
   #
-  # BASE BRANCH TIP, not `pull_request.base.sha` [2026-10-02 review fix]: base.sha
-  # is frozen when the PR is OPENED, so a PR opened before this change merged
-  # would check out a tree with no record_human_opus_override.sh and its human
-  # override would fail with "No such file" exactly when it is needed (and later
-  # fixes to these scripts would never reach already-open PRs). Under
-  # pull_request_target the default checkout is already the base branch tip;
-  # `ref:` below only makes that explicit. The base BRANCH is trusted code, the PR
-  # head is never fetched. (The arm-or-hold job above keeps base.sha: it needs
-  # only gh_retry.sh, which predates every open PR.)
+  # DEFAULT BRANCH TIP, not `pull_request.base.sha` and not `base.ref`
+  # [2026-10-02 review fixes]. base.sha is frozen when the PR is OPENED, so a PR
+  # opened before this change merged would check out a tree with no
+  # record_human_opus_override.sh and its human override would fail with "No
+  # such file" exactly when it is needed (and later fixes to these scripts would
+  # never reach already-open PRs). And a statuses:write job must not run a script
+  # from an arbitrary base branch: commit statuses belong to the SHA, so a writer
+  # could push branch X (= main + an edited copy of the script) and open feat->X.
+  # So the job runs only for a PR whose base IS the default branch, and checks
+  # out the default branch tip. The PR head is never fetched. (The arm-or-hold job
+  # above keeps base.sha: it needs only gh_retry.sh, which predates every open
+  # PR.) Residual: a side branch whose own copy of THIS workflow is edited can
+  # still post a status on a SHA (gate.yml's SIDE-BRANCH RESIDUAL note).
   record-human-opus-override:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.action == 'labeled' && github.event.label.name == 'human-approved'
-    # This repo's runner convention (`vars.CI_RUNNER || 'ubuntu-latest'`), NOT
-    # savvy-backend's CI_RUNNER_OVERFLOW chain: here CI_RUNNER_OVERFLOW points at
-    # the scarce self-hosted pool (see merge-guard.yml's runs-on rationale), and
-    # an override is a few API calls that must never queue behind it.
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.base.ref == github.event.repository.default_branch && github.event.action == 'labeled' && github.event.label.name == 'human-approved'
+    # Literal GitHub-hosted runner [2026-10-02 review fix], NOT `vars.CI_RUNNER`:
+    # this job holds statuses:write, so it must never share a persistent
+    # (self-hosted, non-ephemeral) host with a PR-influenced job. Also not the
+    # CI_RUNNER_OVERFLOW pool (scarce; an override is a few API calls that must
+    # never queue behind it). merge-guard.yml is pinned the same way.
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
@@ -342,10 +347,10 @@ jobs:
       group: record-human-opus-override-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
       cancel-in-progress: false
     steps:
-      - name: Checkout base branch tip (trusted) — NOT the PR head
+      - name: Checkout default branch tip (trusted) — NOT the PR head
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
+          ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Record human override of opus-verdict-recorded if an allowlisted human approved
