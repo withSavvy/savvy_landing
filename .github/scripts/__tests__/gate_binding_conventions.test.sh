@@ -14,9 +14,9 @@
 #   - record-opus-verdict turns the verdict into the commit status
 #     `opus-verdict-recorded`; `statuses: write` lives on exactly the recorder and
 #     the human-override job, NEVER at workflow level.
-#   - the recorder `if` is exactly `!cancelled()` (a bare always() makes a
-#     superseded run immortal; any extra clause could skip it and leave the
-#     required context missing).
+#   - the recorder `if` is `!cancelled()` plus the default-branch base guard (a
+#     bare always() makes a superseded run immortal; any other clause could skip
+#     it and leave the required context missing).
 #   - no job is DISPLAYED as `opus-verdict-recorded`, so a future required-check
 #     flip cannot be satisfied by the recorder job's own check-run.
 #   - gate.yml has no paths/paths-ignore filter.
@@ -25,9 +25,11 @@
 #   - allowed_non_write_users is never passed without CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=0
 #     (it forces SCRUB=1, which needs bubblewrap: the #1239 NO_EXEC_FILE_INFRA crash).
 #   - the override job lives in auto-arm-merge.yml, fires only on `labeled`
-#     `human-approved` (never `unlabeled`: removing labels never releases), and
-#     checks out the BASE BRANCH TIP (not the PR-open-time base.sha, which would
-#     leave PRs opened before this merged with no recorder/override script).
+#     `human-approved` for a PR into the default branch (never `unlabeled`:
+#     removing labels never releases), and checks out the BASE BRANCH TIP.
+#   - [2026-10-02] the recorder runs TRUSTED code (checkout at base.sha, no package
+#     manager / make / test runner), re-derives the CI surface itself, and opus-gate
+#     snapshots gate_binding_verdict.sh to $RUNNER_TEMP before any model step.
 #   - [review fix] CODEOWNERS covers /.github/ and /.claude/scripts/ (the only guard
 #     a PR cannot edit; see gate.yml's KNOWN LIMIT), ci.yml's required `gate` job
 #     RUNS these tests, merge-guard's human-approved release is SHA-bound, and
@@ -128,16 +130,25 @@ check("the review enforce step has an id and writes its token output",
 
 print("--- the recorder job ---")
 check("exists, needs only opus-gate", rec.get("needs") in (["opus-gate"], "opus-gate"))
-check("its job-level `if` is exactly !cancelled()", norm_if(rec.get("if")) == "!cancelled()")
+check("its job-level `if` is !cancelled() plus the default-branch base guard, nothing else",
+      norm_if(rec.get("if")) == "!cancelled() && github.event.pull_request.base.ref == github.event.repository.default_branch")
 check("job-scoped permissions: statuses write + contents read + pull-requests read (dependabot file list), nothing else",
       rec.get("permissions") == {"contents": "read", "pull-requests": "read", "statuses": "write"})
 check("display name is not the required context name", rec.get("name") == "record opus verdict")
-check("runs on this repo's CI_RUNNER convention, never the CI_RUNNER_OVERFLOW chain",
-      "vars.CI_RUNNER ||" in str(rec.get("runs-on")) and "OVERFLOW" not in str(rec.get("runs-on")))
+check("runs on `vars.CI_RUNNER || 'self-hosted-ci'` (no GitHub-hosted fallback, no OVERFLOW chain)",
+      rec.get("runs-on") == "${{ vars.CI_RUNNER || 'self-hosted-ci' }}")
 rsteps2 = rec.get("steps", [])
-check("checks out the BASE BRANCH TIP, never the frozen-at-open base.sha and never the PR head",
-      any("actions/checkout" in s.get("uses", "") and s.get("with", {}).get("ref") == "${{ github.base_ref }}" for s in rsteps2)
-      and "pull_request.base.sha" not in str(rsteps2) and "head" not in str([s.get("with", {}).get("ref") for s in rsteps2]))
+check("checks out pull_request.base.sha (trusted base scripts), never the merge ref / PR head, no persisted credentials",
+      any("actions/checkout" in s.get("uses", "") and s.get("with", {}).get("ref") == "${{ github.event.pull_request.base.sha }}"
+          and s["with"].get("persist-credentials") is False for s in rsteps2)
+      and "head" not in str([s.get("with", {}).get("ref") for s in rsteps2]))
+check("the recorder's only `uses:` is actions/checkout, and no step runs a package manager / make / node / test runner",
+      all(s.get("uses", "actions/checkout@").startswith("actions/checkout@") for s in rsteps2)
+      and not re.search(r"\b(npm|pnpm|yarn|bun|npx|make|node|python3?|pytest|jest|vitest)\b",
+                        "\n".join(s.get("run", "") for s in rsteps2))
+      and not re.search(r"\b(npm|pnpm|yarn|bun|npx|make|node|python3?|pytest|jest|vitest)\b",
+                        "\n".join(re.sub(r"^\s*#.*$", "", open(os.path.join(SC, f)).read(), flags=re.M)
+                                  for f in ("post_opus_verdict_recorded.sh", "gh_retry.sh", "ci_surface_paths.sh"))))
 post = [s for s in rsteps2 if "post_opus_verdict_recorded.sh" in s.get("run", "")]
 check("posts through post_opus_verdict_recorded.sh with GITHUB_TOKEN (creator github-actions[bot])",
       len(post) == 1 and post[0].get("env", {}).get("GH_TOKEN") == "${{ secrets.GITHUB_TOKEN }}")
@@ -232,8 +243,10 @@ check("runs record_human_opus_override.sh with PR values env-passed and GITHUB_T
       and ost[0]["env"].get("EVENT_HEAD_SHA") == "${{ github.event.pull_request.head.sha }}")
 types = (arm.get(True, arm.get("on", {})).get("pull_request_target") or {}).get("types")
 check("the trigger did not widen: no `unlabeled`-driven release", types == ["opened", "ready_for_review", "labeled"])
-check("runs on this repo's CI_RUNNER convention, never the CI_RUNNER_OVERFLOW chain",
-      "vars.CI_RUNNER ||" in str(ov.get("runs-on")) and "OVERFLOW" not in str(ov.get("runs-on")))
+check("override job also requires the PR's base to be the default branch",
+      "github.event.pull_request.base.ref == github.event.repository.default_branch" in cond)
+check("override runs on `vars.CI_RUNNER || 'self-hosted-ci'` (no GitHub-hosted fallback, no OVERFLOW chain)",
+      ov.get("runs-on") == "${{ vars.CI_RUNNER || 'self-hosted-ci' }}")
 
 print("--- merge-guard.yml: live CI-surface floor (a convenience block; NOT an anti-spoof control, see CODEOWNERS below) ---")
 mg = guard["jobs"]["merge-guard"]
@@ -269,6 +282,35 @@ check("ci.yml's required `gate` job runs every .github/scripts/__tests__/*.test.
 dep = [s for s in rsteps2 if "post_opus_verdict_recorded.sh" in s.get("run", "")]
 check("the dependabot success path needs PR_NUMBER (live file list) — passed to the post script",
       len(dep) == 1 and "PR_NUMBER" in dep[0].get("env", {}))
+
+print("--- [2026-10-02] binding integrity: opus-gate snapshots the verdict script before any model step ---")
+snap_i = next((i for i, s in enumerate(osteps) if "gate_binding_verdict.sh" in s.get("run", "") and "RUNNER_TEMP" in s.get("run", "")
+               and "cp " in s.get("run", "")), None)
+model_i = next((i for i, s in enumerate(osteps) if "anthropics/claude-code-action" in str(s.get("uses", ""))), None)
+check("a snapshot step copies gate_binding_verdict.sh to $RUNNER_TEMP, BEFORE the first claude-code-action step",
+      snap_i is not None and model_i is not None and snap_i < model_i)
+check("the snapshot step is `if: always()` so `binding` never runs without a chance of the copy",
+      snap_i is not None and norm_if(osteps[snap_i].get("if")) == "always()")
+check("`binding` runs the $RUNNER_TEMP snapshot, never the workspace copy",
+      'bash "$RUNNER_TEMP/gate-binding/gate_binding_verdict.sh"' in b["run"] and "bash .github/scripts/gate_binding_verdict.sh" not in b["run"])
+check("`conclude` executes no repo script (inline only)", "bash " not in concl and ".github/scripts" not in concl)
+
+print("--- [2026-10-02] recorder script: re-derives the CI surface, live base guard, trivial cap ---")
+with open(os.path.join(SC, "post_opus_verdict_recorded.sh")) as f:
+    rscript = f.read()
+code = "\n".join(l for l in rscript.splitlines() if not l.lstrip().startswith("#"))
+check("it paginates the PR files API and includes previous_filename",
+      "--paginate" in code and "previous_filename" in code and "CI_SURFACE_REGEX" in code)
+check("the FLOOR is decided before the success allowlist",
+      code.index('if [ -n "$FLOOR_DESC" ]') < code.index('"$VERDICT" = "PASS"'))
+check("the live base-vs-default check precedes the files read and the POST",
+      code.index('"$BASE_REF" != "$DEFAULT_BRANCH"') < code.index("/files?per_page") < code.index("-X POST"))
+check("the trivial cap (100) gates the by-design passes",
+      "TRIVIAL_MAX_FILES=100" in code and '-gt "$TRIVIAL_MAX_FILES"' in code)
+
+print("--- [2026-10-02] rate-limit classification is wired end to end ---")
+check("both Enforce arms handle INSTALLATION_REST_THROTTLE_INFRA with INSTALLATION_RATE_LIMIT_INFRA",
+      gate_text.count("INSTALLATION_RATE_LIMIT_INFRA|INSTALLATION_REST_THROTTLE_INFRA)") == 2)
 
 print("--- scripts exist and are executable ---")
 for name in ("gate_binding_verdict.sh", "gate_review_conclude.sh", "gate_probe_installation.sh",

@@ -18,7 +18,13 @@
 #   installation_probe_status=<http status | skipped | error>
 #   installation_probe_remaining=<x-ratelimit-remaining or empty>
 #   installation_probe_reset_epoch=<x-ratelimit-reset or empty>
+#   installation_probe_resource=<x-ratelimit-resource (core|search|...) or empty>
 #   installation_probe_message=<GitHub's own "message" field, <=200 chars>
+#
+# remaining + resource are what separate a hard bucket drain (remaining=0) from
+# a REST throttle with budget left (remaining>0: a burst / secondary limit):
+# gate_check_ran.py maps them to INSTALLATION_RATE_LIMIT_INFRA vs
+# INSTALLATION_REST_THROTTLE_INFRA.
 #
 # Env: APP_TOKEN (the gate App token; empty -> status=skipped, because a
 # GITHUB_TOKEN/PAT probe says nothing about the installation bucket),
@@ -26,7 +32,7 @@
 set -uo pipefail
 
 ACTOR="${GITHUB_ACTOR:-}"
-STATUS="skipped"; REMAINING=""; RESET=""; MESSAGE=""
+STATUS="skipped"; REMAINING=""; RESET=""; RESOURCE=""; MESSAGE=""
 
 # A GitHub login is [A-Za-z0-9-] (plus a literal "[bot]" suffix for apps).
 # Anything else is not interpolated into the API path.
@@ -38,6 +44,7 @@ if [ -n "${APP_TOKEN:-}" ] && printf '%s' "$ACTOR" | grep -Eq '^[A-Za-z0-9]([A-Z
     STATUS="$(printf '%s' "$FIRST" | awk '{print $2}')"
     REMAINING="$(printf '%s\n' "$OUT" | grep -i -m1 '^x-ratelimit-remaining:' | cut -d: -f2- | tr -d '[:space:]')"
     RESET="$(printf '%s\n' "$OUT" | grep -i -m1 '^x-ratelimit-reset:' | cut -d: -f2- | tr -d '[:space:]')"
+    RESOURCE="$(printf '%s\n' "$OUT" | grep -i -m1 '^x-ratelimit-resource:' | cut -d: -f2- | tr -d '[:space:]')"
     MESSAGE="$(printf '%s\n' "$OUT" | grep -o -m1 '"message": *"[^"]*"' | head -n1 | sed 's/^"message": *"//; s/"$//' | cut -c1-200)"
   else
     STATUS="error"
@@ -47,5 +54,6 @@ fi
 printf 'installation_probe_status=%s\n' "$STATUS"
 printf 'installation_probe_remaining=%s\n' "$REMAINING"
 printf 'installation_probe_reset_epoch=%s\n' "$RESET"
+printf 'installation_probe_resource=%s\n' "$RESOURCE"
 printf 'installation_probe_message=%s\n' "$MESSAGE"
 exit 0

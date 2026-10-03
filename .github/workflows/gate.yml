@@ -624,7 +624,8 @@ jobs:
       # [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
       # Written BEFORE enforcement so gate_check_ran.py's no-execution-file arm can
       # tell "the action step itself crashed before Claude ran" (installation 403,
-      # install failure -> NO_EXEC_FILE_INFRA / INSTALLATION_RATE_LIMIT_INFRA) from
+      # install failure -> NO_EXEC_FILE_INFRA / INSTALLATION_RATE_LIMIT_INFRA /
+      # INSTALLATION_REST_THROTTLE_INFRA) from
       # "no evidence at all" (FAIL_HARD). Every value is interpolated from GitHub's
       # own steps.<id>.outcome context (the pre-continue-on-error result) or our own
       # probe script — never from model text — so a PR cannot spoof a crash.
@@ -737,9 +738,11 @@ jobs:
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
                          echo "::warning::review: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
-            INSTALLATION_RATE_LIMIT_INFRA)
+            INSTALLATION_RATE_LIMIT_INFRA|INSTALLATION_REST_THROTTLE_INFRA)
                          # The reset time comes from the live 403 probe (the only
-                         # read that sees the burst drain).
+                         # read that sees the burst drain). THROTTLE = the probe still
+                         # read remaining>0 (burst/secondary limit, clears in about a
+                         # minute); RATE_LIMIT = bucket drained (remaining=0).
                          RESET_EPOCH=$(grep -m1 '^installation_probe_reset_epoch=' "${REVIEW_DIAG_FILE}" 2>/dev/null | cut -d= -f2)
                          if [[ "$RESET_EPOCH" =~ ^[0-9]+$ ]]; then
                            RESET_HUMAN=$(date -u -d "@${RESET_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown (could not parse epoch '${RESET_EPOCH}')")
@@ -747,8 +750,8 @@ jobs:
                            RESET_HUMAN="unknown (no reset time recorded)"
                          fi
                          bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
-                           --detail "gate App installation hit GitHub's own API rate limit (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
-                         echo "::warning::review: GitHub App installation rate limit exhausted (resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
+                           --detail "gate App installation hit GitHub's own API rate limit [${TOKEN}] (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
+                         echo "::warning::review: GitHub App installation rate limit (${TOKEN}; resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "review (Sonnet)" \
                            --detail "reviewer could not run (no result / crash; token=$TOKEN)" || true
                          echo "::warning::review: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
@@ -887,6 +890,24 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.app_token.outputs.token || secrets.CLAUDE_PAT }}
+
+      # ── SNAPSHOT the verdict script BEFORE any model step ────────────────
+      # [2026-10-02, savvy-backend#1595] The reviewer steps below can run shell in
+      # this workspace, and the `binding` step decides what the job concludes.
+      # Copy gate_binding_verdict.sh (the only repo script `binding` / `conclude`
+      # execute; `conclude` is inline) to $RUNNER_TEMP now, before the first
+      # claude-code-action step, and run THAT copy later, so an edit to the
+      # workspace file made during the job cannot change the verdict. A
+      # non-CI-surface PR cannot have changed the script before this point (the
+      # floor blocks CI-surface edits). Missing snapshot => `binding` yields
+      # FAIL (fail-closed).
+      - name: Snapshot binding-verdict script (before any model step)
+        if: always()
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/gate-binding"
+          cp .github/scripts/gate_binding_verdict.sh "$RUNNER_TEMP/gate-binding/gate_binding_verdict.sh"
+          chmod 0555 "$RUNNER_TEMP/gate-binding/gate_binding_verdict.sh"
 
       # ── HARD-BLOCK FLOOR ─────────────────────────────────────────────────
       # Absolute: same floor as Tier 1. Opus CANNOT override this.
@@ -1289,9 +1310,11 @@ jobs:
             AUTH_FAIL)   bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer AUTH FAILED (401) — org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired/revoked" || true
                          echo "::warning::opus-gate: AUTH FAILED (401, org secret REVIEWER_SUB_OAUTH_TOKEN invalid/expired) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595). Remint the company Claude subscription OAuth token (CLAUDE_CONFIG_DIR=~/.claude-company claude setup-token)." ; exit 0 ;;
-            INSTALLATION_RATE_LIMIT_INFRA)
+            INSTALLATION_RATE_LIMIT_INFRA|INSTALLATION_REST_THROTTLE_INFRA)
                          # The reset time comes from the live 403 probe (the only
-                         # read that sees the burst drain).
+                         # read that sees the burst drain). THROTTLE = the probe still
+                         # read remaining>0 (burst/secondary limit, clears in about a
+                         # minute); RATE_LIMIT = bucket drained (remaining=0).
                          RESET_EPOCH=$(grep -m1 '^installation_probe_reset_epoch=' "${OPUS_DIAG_FILE}" 2>/dev/null | cut -d= -f2)
                          if [[ "$RESET_EPOCH" =~ ^[0-9]+$ ]]; then
                            RESET_HUMAN=$(date -u -d "@${RESET_EPOCH}" +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown (could not parse epoch '${RESET_EPOCH}')")
@@ -1299,8 +1322,8 @@ jobs:
                            RESET_HUMAN="unknown (no reset time recorded)"
                          fi
                          bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
-                           --detail "gate App installation hit GitHub's own API rate limit (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
-                         echo "::warning::opus-gate: GitHub App installation rate limit exhausted (resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; the binding verdict is INFRA and opus-verdict-recorded reads failure (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
+                           --detail "gate App installation hit GitHub's own API rate limit [${TOKEN}] (NOT the Anthropic usage cap, NOT a code issue) before the reviewer could make its first call — resets at ${RESET_HUMAN}. Expected to clear on its own after that time; re-run the failed jobs then." || true
+                         echo "::warning::opus-gate: GitHub App installation rate limit (${TOKEN}; resets ${RESET_HUMAN}) — NOT a crash and NOT a code rejection. Routed to human via needs-human-review as a backstop; not auto-merging; the binding verdict is INFRA and opus-verdict-recorded reads failure (2026-10-02, #1595). Re-run the failed jobs after the reset." ; exit 0 ;;
             *)           bash .github/scripts/gate_infra_escalate.sh --pr "$PR_NUMBER" --check "opus-gate (Opus)" \
                            --detail "Opus reviewer could not run (no result / crash; token=$TOKEN)" || true
                          echo "::warning::opus-gate: reviewer couldn't run ($TOKEN) — routed to human via needs-human-review label; not auto-merging; this check concludes FAILURE, never success (2026-10-02, #1595)." ; exit 0 ;;
@@ -1448,7 +1471,8 @@ jobs:
           ENFORCE_VERDICT_OUTCOME: ${{ steps.enforce_verdict.outcome }}
         run: |
           set -uo pipefail
-          VERDICT="$(bash .github/scripts/gate_binding_verdict.sh)" || VERDICT=""
+          # The pre-model snapshot (see "Snapshot binding-verdict script"), not the workspace copy.
+          VERDICT="$(bash "$RUNNER_TEMP/gate-binding/gate_binding_verdict.sh")" || VERDICT=""
           [ -n "$VERDICT" ] || VERDICT="FAIL"
           echo "binding_verdict=$VERDICT" >> "$GITHUB_OUTPUT"
           echo "opus-gate binding verdict: $VERDICT"
@@ -1482,55 +1506,67 @@ jobs:
   #
   #  * `!cancelled()`, NOT `always()` — see the concurrency header; a superseded
   #    run must die. A job-level skip of opus-gate (dependabot) still reaches
-  #    this job and posts its by-design success.
+  #    this job and posts its by-design success (only if no CI-surface path).
+  #  * BASE GUARD [2026-10-02, savvy-backend#1595]: the job runs only for a PR
+  #    whose base IS the default branch (job `if:`), and the script re-checks the
+  #    LIVE base via the API and posts nothing otherwise. Commit statuses belong
+  #    to the SHA, not the PR, and this workflow runs for a PR into any non-develop
+  #    branch; without the guard a PR into a side branch could mint a status that
+  #    a later PR into main inherits.
+  #  * TRUSTED CODE ONLY: the scripts this job runs are checked out at
+  #    pull_request.base.sha (never the PR merge ref or head), so a PR cannot
+  #    weaken the scripts that grade it. The job runs only bash/gh/jq and
+  #    .github/scripts from that checkout: no npm/pnpm/yarn/bun/make, no test
+  #    runner, no package script (asserted by gate_binding_conventions.test.sh).
+  #    Rollout note: base.sha is frozen when a PR is opened/synchronized, so a PR
+  #    whose base predates this change has no recorder script; the step then
+  #    fails loudly and the context stays missing (fail-closed). A push or rebase
+  #    onto the new base fixes it. This PR's own run fails the same way, by design.
+  #  * RE-DERIVES THE CI SURFACE ITSELF: post_opus_verdict_recorded.sh reads the PR's
+  #    changed files (paginated, renames included) from the API and posts
+  #    `failure` "FLOOR: CI-surface change — human release required" for ANY
+  #    match, whatever opus-gate's outputs say. A PR that edits only
+  #    .github/scripts/ is therefore a failure unless a human override applies.
   #  * Display name "record opus verdict" never equals the context
   #    `opus-verdict-recorded`, so this job's own check-run can never satisfy it.
   #  * Job-scoped permissions: statuses:write is held by this job (and by
   #    auto-arm-merge.yml's record-human-opus-override) and NOWHERE at workflow
   #    level. contents:read is only for the checkout; pull-requests:read is only
-  #    for the dependabot CI-surface file-list check in the post script.
+  #    for the live PR / file-list reads in the post script.
   #  * Posted with GITHUB_TOKEN so the creator is github-actions[bot] (app
   #    15368), which is what the required-context pin accepts. Never app_id -1:
   #    that would let a PAT post it.
-  #  * KNOWN LIMIT — NOTHING IN THIS FILE STOPS A PR FROM SPOOFING THE STATUS.
-  #    `pull_request` workflows run from the PR's own merge ref, so a same-repo PR
-  #    can edit THIS file (or merge-guard.yml) and add a job with
-  #    `permissions: {statuses: write}` that POSTs opus-verdict-recorded=success
-  #    with GITHUB_TOKEN; the creator is then github-actions[bot] and passes the
-  #    integration_id pin. merge-guard is NOT a required check in this repo
-  #    (ruleset 23711370 requires only gate, workflow-safety and Gitleaks) and,
-  #    even if it were, it is also PR-controlled. The ONLY guard a PR cannot edit
-  #    is CODEOWNERS read from the BASE branch with require-code-owner-review on:
-  #    `/.github/` and `/.claude/scripts/` are owned by @Sara3, and the Sara-only
-  #    required-flip step turns that review requirement on in the same change
-  #    that makes this context required. Do not flip the context without it.
-  #  * The recorder SCRIPTS (post_opus_verdict_recorded.sh, gh_retry.sh,
-  #    ci_surface_paths.sh) are checked out from the BASE BRANCH TIP, not the PR
-  #    merge ref, so a PR cannot weaken those scripts in order to be graded by
-  #    them. That does NOT make the job trustworthy against a PR that edits this
-  #    workflow file (see above). The base BRANCH tip is used rather than
-  #    pull_request.base.sha because base.sha is frozen at PR-open time: a PR
-  #    opened before this change merged would check out a tree with no recorder
-  #    script at all and sit at "Expected" with no working override.
-  #  * Runner: this repo's `vars.CI_RUNNER || 'ubuntu-latest'` convention. NOT the
-  #    backend's CI_RUNNER_OVERFLOW chain — here CI_RUNNER_OVERFLOW points at the
-  #    scarce self-hosted pool (see merge-guard.yml's runs-on rationale).
+  #  * KNOWN LIMIT (pre-existing, out of scope) — A PR THAT EDITS .github/workflows
+  #    CAN STILL SPOOF THE STATUS. `pull_request` workflows run from the PR's own
+  #    merge ref, so a same-repo PR can edit THIS file (or merge-guard.yml) and add
+  #    a job with `permissions: {statuses: write}` that POSTs
+  #    opus-verdict-recorded=success with GITHUB_TOKEN. merge-guard is NOT a
+  #    required check in this repo (ruleset 23711370 requires only gate,
+  #    workflow-safety and Gitleaks) and is PR-controlled anyway. The only guard a
+  #    PR cannot edit is CODEOWNERS read from the base branch with
+  #    require-code-owner-review on: `/.github/` and `/.claude/scripts/` are owned
+  #    by @Sara3 and the Sara-only required-flip turns that review on. Do not flip
+  #    the context without it.
+  #  * Runner: this repo's `vars.CI_RUNNER || 'self-hosted-ci'` (zero GitHub-hosted
+  #    minutes; Sara 2026-10-02).
   # ---------------------------------------------------------------------------
   record-opus-verdict:
     name: record opus verdict
     needs: [opus-gate]
-    if: ${{ !cancelled() }}
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    if: ${{ !cancelled() && github.event.pull_request.base.ref == github.event.repository.default_branch }}
+    runs-on: ${{ vars.CI_RUNNER || 'self-hosted-ci' }}
     timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: read
       statuses: write
     steps:
-      - name: Checkout recorder scripts from the base branch tip (trusted)
+      # base.sha, NOT the PR merge ref/head [2026-10-02, savvy-backend#1595]: the
+      # scripts below hold statuses:write, so they must be the base versions.
+      - name: Checkout recorder scripts at the base sha (trusted)
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.base_ref }}
+          ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout: .github/scripts
           persist-credentials: false
 
@@ -1545,5 +1581,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -uo pipefail
+          if [ ! -f .github/scripts/post_opus_verdict_recorded.sh ]; then
+            echo "::error::the base sha has no post_opus_verdict_recorded.sh (PR base predates the binding-verdict change) — posting nothing, context stays missing (fail-closed). Push or rebase onto the current base."
+            exit 1
+          fi
           bash .github/scripts/post_opus_verdict_recorded.sh \
             "$OPUS_RESULT" "$BINDING_VERDICT" "$ACTOR" "$HEAD_SHA" "$RUN_URL"

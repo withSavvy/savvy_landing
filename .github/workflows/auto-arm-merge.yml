@@ -326,12 +326,12 @@ jobs:
   # head is never fetched. (The arm-or-hold job above keeps base.sha: it needs
   # only gh_retry.sh, which predates every open PR.)
   record-human-opus-override:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.action == 'labeled' && github.event.label.name == 'human-approved'
-    # This repo's runner convention (`vars.CI_RUNNER || 'ubuntu-latest'`), NOT
-    # savvy-backend's CI_RUNNER_OVERFLOW chain: here CI_RUNNER_OVERFLOW points at
-    # the scarce self-hosted pool (see merge-guard.yml's runs-on rationale), and
-    # an override is a few API calls that must never queue behind it.
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    # Base guard [2026-10-02, savvy-backend#1595]: only a PR INTO THE DEFAULT BRANCH can
+    # mint an override (statuses are SHA-global; the checkout below is the base tip).
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.action == 'labeled' && github.event.label.name == 'human-approved' && github.event.pull_request.base.ref == github.event.repository.default_branch
+    # This repo's runner convention with the self-hosted fallback (Sara,
+    # 2026-10-02: zero GitHub-hosted minutes): `vars.CI_RUNNER || 'self-hosted-ci'`.
+    runs-on: ${{ vars.CI_RUNNER || 'self-hosted-ci' }}
     timeout-minutes: 10
     permissions:
       contents: read

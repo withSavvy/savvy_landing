@@ -25,7 +25,7 @@ c() {
 }
 
 c "clean reviewer (PASS) -> success, no infra_token"            0 ""                              success success PASS
-for t in AUTH_FAIL PERMISSION_DENIED_INFRA USAGE_CAP_INFRA EMPTY_RESULT_INFRA INSTALLATION_RATE_LIMIT_INFRA NO_EXEC_FILE_INFRA RUNNER_SANDBOX_MISSING_INFRA FAIL_HARD; do
+for t in AUTH_FAIL PERMISSION_DENIED_INFRA USAGE_CAP_INFRA EMPTY_RESULT_INFRA INSTALLATION_RATE_LIMIT_INFRA INSTALLATION_REST_THROTTLE_INFRA NO_EXEC_FILE_INFRA RUNNER_SANDBOX_MISSING_INFRA FAIL_HARD; do
   c "infra token $t -> FAILURE + infra_token=$t" 1 "$t" success success "$t"
 done
 c "ROUTE_HUMAN -> FAILURE, NO infra_token (stays a floor block)"  1 ""  success success ROUTE_HUMAN
