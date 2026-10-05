@@ -135,8 +135,8 @@ check("its job-level `if` is !cancelled() plus the default-branch base guard, no
 check("job-scoped permissions: statuses write + contents read + pull-requests read (dependabot file list), nothing else",
       rec.get("permissions") == {"contents": "read", "pull-requests": "read", "statuses": "write"})
 check("display name is not the required context name", rec.get("name") == "record opus verdict")
-check("runs on `vars.CI_RUNNER || 'self-hosted-ci'` (no GitHub-hosted fallback, no OVERFLOW chain)",
-      rec.get("runs-on") == "${{ vars.CI_RUNNER || 'self-hosted-ci' }}")
+check("runs on `vars.CI_RUNNER || 'ubuntu-latest'` (landing is PUBLIC: the org runner group excludes public repos, so a self-hosted fallback would queue forever; no OVERFLOW chain)",
+      rec.get("runs-on") == "${{ vars.CI_RUNNER || 'ubuntu-latest' }}")
 rsteps2 = rec.get("steps", [])
 check("checks out pull_request.base.sha (trusted base scripts), never the merge ref / PR head, no persisted credentials",
       any("actions/checkout" in s.get("uses", "") and s.get("with", {}).get("ref") == "${{ github.event.pull_request.base.sha }}"
@@ -245,8 +245,8 @@ types = (arm.get(True, arm.get("on", {})).get("pull_request_target") or {}).get(
 check("the trigger did not widen: no `unlabeled`-driven release", types == ["opened", "ready_for_review", "labeled"])
 check("override job also requires the PR's base to be the default branch",
       "github.event.pull_request.base.ref == github.event.repository.default_branch" in cond)
-check("override runs on `vars.CI_RUNNER || 'self-hosted-ci'` (no GitHub-hosted fallback, no OVERFLOW chain)",
-      ov.get("runs-on") == "${{ vars.CI_RUNNER || 'self-hosted-ci' }}")
+check("override runs on `vars.CI_RUNNER || 'ubuntu-latest'` (landing is PUBLIC: self-hosted would never be scheduled; no OVERFLOW chain)",
+      ov.get("runs-on") == "${{ vars.CI_RUNNER || 'ubuntu-latest' }}")
 
 print("--- merge-guard.yml: live CI-surface floor (a convenience block; NOT an anti-spoof control, see CODEOWNERS below) ---")
 mg = guard["jobs"]["merge-guard"]
