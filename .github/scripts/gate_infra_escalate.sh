@@ -6,9 +6,10 @@
 # and human-visible, identically for every gate check:
 #
 #   1. Ensure the distinct `gate-infra-error` label exists (idempotent).
-#   2. Label the PR `gate-infra-error` + `needs-human-review` so it leaves the
-#      auto-merge path and enters the human queue, tagged as an infra failure
-#      (NOT "your code was rejected").
+#   2. Label the PR `gate-infra-error` + `needs-human-review` on EVERY
+#      occurrence (retried, with a REST read-back) so it leaves the auto-merge
+#      path and enters the human queue, tagged as an infra failure (NOT "your
+#      code was rejected").
 #   3. Open OR update a single DEDUPED tracking issue per failing check class
 #      (dedup key = a hidden marker in the issue body). Repeat occurrences add a
 #      comment instead of spawning a new issue — so a flaky check yields ONE
@@ -20,12 +21,30 @@
 # caller has already decided to BLOCK (exit non-zero). This script only annotates;
 # it must never itself flip a block into a pass.
 #
+# ── LABEL ON EVERY OCCURRENCE, WITH READ-BACK (2026-10-02, savvy-backend#1595 /
+# tracking #1239 — ported to savvy_landing) ───────────────────────────────────
+# savvy-backend reversed its "label only on the FIRST crash per PR+check" rule
+# after #1595: a crashed-review PR lost its only backstop label and was
+# bot-merged with no Opus verdict. savvy_landing never had the first-occurrence
+# gate (the label was always re-applied), but the write was a bare `|| true`
+# that was never read back, so one dropped call left an unreviewed PR with no
+# backstop and no signal. The write now goes through gh_retry.sh and is read
+# back over REST; a missing label is a loud ::error:: (this script still exits 0
+# — it only annotates and must never itself flip a block into a pass).
+# The release path no longer depends on label REMOVAL either: a crashed
+# reviewer concludes opus-gate FAILURE and the required `opus-verdict-recorded`
+# status reads failure; the ways out are a re-run of the failed jobs once the
+# cause clears, or an allowlisted human adding `human-approved` (SHA-bound
+# override, see verify_human_approved.sh). REMOVING LABELS NEVER RELEASES.
+#
 # Usage:
 #   gate_infra_escalate.sh --pr <num> --check <name> --detail "<one-line cause>" \
 #       [--run-url <actions-run-url>] [--repo <owner/repo>]
 #
 # Env: GH_TOKEN (or GITHUB_TOKEN) must be set for the gh calls.
 set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PR=""; CHECK=""; DETAIL=""; RUN_URL=""; REPO="${GITHUB_REPOSITORY:-}"
 while [ $# -gt 0 ]; do
@@ -62,10 +81,22 @@ ghx label create gate-infra-error \
   --description "Gate could not RUN a check (infra/environment error) — couldn't verify, not a code rejection" \
   >/dev/null 2>&1 || true
 
-# 2. Label the PR (both: distinct infra tag + the human-queue tag).
+# 2. Label the PR (both: distinct infra tag + the human-queue tag) on EVERY
+# occurrence. The write goes through gh_retry.sh (a transient gh failure must not
+# silently drop the one backstop label), then is read back over REST — a write
+# that reported success is not proof the label landed. gh_retry.sh runs as its own
+# process, so it cannot see the `ghx` shell function above; call `gh` directly
+# with an explicit --repo, mirroring gate.yml's own ROUTE_HUMAN arm.
 if [ -n "$PR" ]; then
-  ghx issue edit "$PR" --add-label gate-infra-error --add-label needs-human-review \
-    >/dev/null 2>&1 || true
+  if ! bash "${SCRIPT_DIR}/gh_retry.sh" --retries 2 --sleep 2 -- \
+       gh issue edit "$PR" --add-label gate-infra-error --add-label needs-human-review --repo "$REPO"; then
+    echo "::error::gate-infra-error: could not apply gate-infra-error/needs-human-review to PR #$PR after retries — the backstop label write failed."
+  fi
+  LABELS_NOW="$(bash "${SCRIPT_DIR}/gh_retry.sh" --retries 2 --sleep 2 -- \
+    gh api "repos/${REPO}/issues/${PR}/labels" --jq '.[].name' || true)"
+  if ! printf '%s\n' "$LABELS_NOW" | grep -qx needs-human-review; then
+    echo "::error::gate-infra-error: needs-human-review is NOT present on PR #$PR after a reported-success label write — the backstop is missing and needs manual attention."
+  fi
 fi
 
 # 3. Deduped tracking issue (one per check class). Dedup by a hidden body marker,
@@ -112,7 +143,7 @@ if [ -n "$PR" ]; then
     echo "- **not chased by the auto-fixer** (there is nothing in the code to fix), and"
     echo "- **routed to a human** with the \`gate-infra-error\` label + a deduped tracking issue."
     echo ""
-    echo "Re-run the gate once the infra cause is resolved. ${RUN_URL:+[Failing run](${RUN_URL})}"
+    echo "**Removing labels does not release this PR** — the required \`opus-verdict-recorded\` status reads failure until the gate actually completes. Re-run the failed jobs once the infra cause is resolved, or have an allowlisted human review the diff and add \`human-approved\` (a SHA-bound override). ${RUN_URL:+[Failing run](${RUN_URL})}"
     echo ""
     echo "_— savvy gate · Type-C escalation_"
   } > "$BODY_FILE"

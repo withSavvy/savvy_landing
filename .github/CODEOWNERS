@@ -1,12 +1,25 @@
 # CODEOWNERS — prod-deploy change gate
 #
 # Any PR touching the paths below requires @Sara3's review before merge
-# (enforced via branch protection: require_code_owner_reviews=true on main).
-# Scope is deliberately narrow (prod deploy config + deploy workflow) so routine
-# and automation PRs are NOT gated. Reviewers need write/admin access.
+# ONLY WHEN code-owner review is enforced on main. As of 2026-10-02 it is NOT:
+# classic protection has require_code_owner_reviews=false and ruleset 23711370
+# has no pull_request rule, so this file is advisory until the Sara-only
+# required-flip step turns it on (see the PR that added the CI-surface block).
+# Reviewers need write/admin access. GitHub reads CODEOWNERS from the PR's BASE
+# branch, so a PR cannot edit this file to dodge its own review.
 
 # Prod deploy configuration (Cloudflare)
 /wrangler.jsonc                                @Sara3
 
 # Deploy workflow
 /.github/workflows/deploy.yml                  @Sara3
+
+# CI surface [2026-10-02, savvy-backend#1595 / tracking #1239]. A same-repo PR can
+# edit .github/workflows/gate.yml (or merge-guard.yml) to post the binding
+# `opus-verdict-recorded` status itself with a GITHUB_TOKEN job, and nothing
+# required runs from anywhere but the PR's own copy of the workflows. Code-owner
+# review read from the base branch is the one guard a PR cannot edit, so it
+# covers the whole CI surface (this also covers .github/CODEOWNERS and
+# .github/dependabot.yml, and every dependabot action-bump PR).
+/.github/                                      @Sara3
+/.claude/scripts/                              @Sara3
