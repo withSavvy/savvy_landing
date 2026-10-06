@@ -1,0 +1,94 @@
+name: Gate infra retry
+# PORTED from savvy-backend#1616 (design, guarantee and tests are the same; see SPEC there).
+# Re-runs a Gate run's opus-gate job ONCE, ~10 minutes after the run completed,
+# when it failed because the reviewer could not run for a reason that clears with
+# TIME: a spent installation REST budget or a usage cap.
+#
+# WHY [savvy-backend#1537, run 37237626545, 2026-10-04/05] opus-gate crashed on
+# INSTALLATION_RATE_LIMIT_INFRA with every other job green. `record opus verdict`
+# correctly posted the required `opus-verdict-recorded` status as failure (a crash
+# must never read as a pass, #1605) and the PR sat there until a human ran
+# `gh run rerun --failed`, which re-ran only opus-gate + the recorder and flipped
+# the status. This workflow is that re-run, automated, and nothing else.
+#
+# THE GUARANTEE (frozen by .github/scripts/__tests__/gate_infra_retry_guarantee.test.sh)
+#   G1  opus-gate (+ its dependent recorder) of THAT run is re-run once, only for
+#       INSTALLATION_RATE_LIMIT_INFRA, INSTALLATION_REST_THROTTLE_INFRA or
+#       USAGE_CAP_INFRA (the newest opus-verdict-recorded status says so)
+#   G2  at most one retry per head SHA, ever (a run on the SHA at attempt 2+
+#       blocks it, whoever started it)
+#   G3  never for FLOOR / FAIL / ROUTE_HUMAN / any other infra token / a human
+#       override / any unknown or missing input
+#   G4  never when the PR changed after the failure (closed, head moved, base not
+#       the default branch, a newer Gate run for the SHA); every check is repeated
+#       after the wait, immediately before the re-run
+#   G5  the only write is POST actions/jobs/<opus-gate job id>/rerun for the job
+#       of the SAME run. No scope here writes a status, check, label, comment,
+#       issue or contents, so it can never post `opus-verdict-recorded` itself:
+#       the re-run gate produces the verdict, the unchanged recorder posts it
+#   G6  the recorder's own runs-on expression. savvy_landing is PUBLIC with forking on and
+#       the org runner group excludes public repos, so its recorder (and this) is GitHub-hosted
+#       by design (free on a public repo). Never self-hosted-ci here.
+#
+# WHY GITHUB_TOKEN: the gate App installation is what is being throttled; the
+# workflow token has its own rate-limit bucket. No PAT, no new secret.
+#
+# WHY workflow_run IS SAFE HERE: it runs the DEFAULT BRANCH's copy of this file and
+# script, never checks out or executes PR code, and only asks GitHub to re-run a
+# job of a run that already exists, for the SHA that run started on. No
+# attacker-influenced event field (branch name, title, commit message) is used;
+# the inputs are numeric ids, event, conclusion, attempt, head sha, PR numbers.
+#
+# COST: an ELIGIBLE failure holds one runner of the recorder's pool for ~10 min
+# while it sleeps. Successful, cancelled, non-PR and attempt-2+ runs are filtered
+# by the job-level `if` and take no runner.
+#
+# FOLLOW-UPS (out of scope): merge-guard is NOT re-run by this (the gate clears
+# needs-human-review with GITHUB_TOKEN, which does not trigger merge-guard; same
+# for a manual re-run) · review-job infra failures (not a required check here) ·
+# reset-aware delay instead of a flat 10 min · the VM resweeper skipping `hold`
+# PRs and its interplay with this retry · runner co-tenancy, reviewer allowlists,
+# PAT surface (merge-gate round 3) · porting to the sibling repos.
+on:
+  workflow_run:
+    workflows: ["Gate"]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: gate-infra-retry-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  retry-opus-gate:
+    name: retry opus-gate (infra, once per SHA)
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt == 1 }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30 # ~10 min wait + gh_retry waits >= 60s per rate-limited read
+    permissions:
+      actions: write # POST actions/jobs/{id}/rerun, plus reading the run's jobs and runs
+      contents: read # checkout of the default branch's scripts
+      pull-requests: read # the live PR (state, head, base)
+      statuses: read # the newest opus-verdict-recorded status
+    steps:
+      - name: Checkout retry scripts from the default branch (trusted)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Re-run opus-gate once on a self-clearing infra failure
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_PR_NUMBERS: ${{ join(github.event.workflow_run.pull_requests.*.number, ' ') }}
+          RETRY_DELAY_SECONDS: 600
+        run: |
+          set -uo pipefail
+          bash .github/scripts/gate_infra_retry.sh
