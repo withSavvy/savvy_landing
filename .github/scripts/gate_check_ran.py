@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Decide a claude-code-action review outcome. Prints ONE token: PASS | ROUTE_HUMAN | FAIL_HARD | AUTH_FAIL.
+"""Decide a claude-code-action review outcome. Prints ONE token:
+PASS | ROUTE_HUMAN | FAIL_HARD | AUTH_FAIL | NO_EXEC_FILE_INFRA |
+INSTALLATION_RATE_LIMIT_INFRA | INSTALLATION_REST_THROTTLE_INFRA.
 
 Source of truth is the action's EXECUTION FILE (its `result` event / `is_error`),
 NOT the `conclusion` output. claude-code-action@v1 does not reliably populate
@@ -14,8 +16,32 @@ Decision tree (first match wins):
      `workflows` scope), so a "clean" review there only means "nothing it could
      apply" — a CI-surface change must never auto-pass; a human signs it off.
   B. No parseable result event -> the review never produced output (auth failure,
-     crash, missing file) -> FAIL_HARD. Still catches the ~2s silent-swallow auth
-     failure that #125 guarded against.
+     crash, missing file). A file that is PRESENT but empty/corrupt/unparseable
+     -> FAIL_HARD. Still catches the ~2s silent-swallow auth failure that #125
+     guarded against.
+     [2026-10-02, savvy-backend#1595 / tracking #1239 — ported to savvy_landing]
+     A file that is ABSENT entirely means the action died BEFORE Claude ran (any
+     Claude-phase error still writes the execution file), so no-file == a
+     prepare/auth/install/network-phase death. If gate.yml's "Capture reviewer
+     diagnostics" step recorded the action step's own outcome=failure
+     (structural, never model text) this is infra, not a code rejection:
+       * `installation_probe_status=403|429` + a message containing "rate limit
+         exceeded for installation" (a live REST probe made with the same App
+         token, only when the execution file is missing). 32 of the 34 #1239
+         occurrences were this burst on the savvy-gate-bot installation; the
+         action's own REST call dies with a 403 before the review starts. Split
+         by the probe's x-ratelimit-remaining:
+           remaining > 0 -> INSTALLATION_REST_THROTTLE_INFRA (the REST bucket
+                            still has budget: a burst/secondary throttle, which
+                            clears in about a minute)
+           remaining = 0 -> INSTALLATION_RATE_LIMIT_INFRA (bucket drained until
+                            x-ratelimit-reset)
+           remaining unreadable -> INSTALLATION_RATE_LIMIT_INFRA (conservative).
+       * any other crash -> NO_EXEC_FILE_INFRA.
+     With no crash evidence (undeterminable cause, or no diag file passed) ->
+     FAIL_HARD, fail closed. Never PASS on this arm. Every one of these is a
+     non-pass for the binding verdict (gate_binding_verdict.sh): none of them can
+     read as success.
   C. Result event present but is_error -> auth failure -> AUTH_FAIL (loud, actionable);
      max-turns routes to human (ran long but didn't finish); any other error -> FAIL_HARD.
   D. `conclusion` is populated AND explicitly not "success" -> defensive
@@ -23,6 +49,7 @@ Decision tree (first match wins):
   E. Result event present, not is_error, conclusion not contradicting -> PASS.
 """
 import json
+import os
 import sys
 from typing import Any, Optional
 
@@ -30,6 +57,7 @@ conclusion: str = sys.argv[1] if len(sys.argv) > 1 else ""
 skipped: str = sys.argv[2] if len(sys.argv) > 2 else ""
 exec_file: str = sys.argv[3] if len(sys.argv) > 3 else ""
 edits_workflows: str = sys.argv[4] if len(sys.argv) > 4 else ""
+diag_file: str = sys.argv[5] if len(sys.argv) > 5 else ""
 
 
 def result_event(path: str) -> Optional[dict[str, Any]]:
@@ -80,6 +108,56 @@ def is_auth_failure(path: str) -> bool:
     return False
 
 
+def _diag_value(path: str, wanted: str) -> Optional[str]:
+    """Value of the first whole-line `wanted=<value>` entry in the diagnostics
+    file, or None when the file/key is absent or unreadable.
+
+    STRUCTURAL, spoof-safe: every key is written by gate.yml's own capture step
+    (steps.<id>.outcome values and gate_probe_installation.sh), never from the
+    reviewer's free text or PR-controlled input."""
+    if not path:
+        return None
+    try:
+        with open(path) as f:
+            lines = f.read().splitlines()
+    except Exception:
+        return None
+    for line in lines:
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == wanted:
+            return value.strip()
+    return None
+
+
+def action_step_crashed(path: str) -> bool:
+    """True iff the diagnostics file records that the claude-code-action step
+    itself FAILED (`steps.<id>.outcome` == `failure`, the pre-continue-on-error
+    result). Exact whole-line key=value only; absent/unreadable -> False."""
+    return any(
+        _diag_value(path, key) == "failure"
+        for key in ("fix_pass_outcome", "review_only_pass_outcome")
+    )
+
+
+def installation_probe_rate_limited(path: str) -> bool:
+    """True iff the live installation probe (a REST call made with the gate App
+    token AFTER the reviewer crashed without an execution file) came back
+    403/429 with GitHub's own "rate limit exceeded for installation" message.
+    Missing/unreadable/other status -> False."""
+    if _diag_value(path, "installation_probe_status") not in ("403", "429"):
+        return False
+    message = _diag_value(path, "installation_probe_message") or ""
+    return "rate limit exceeded for installation" in message.lower()
+
+
+def installation_probe_has_budget(path: str) -> bool:
+    """True iff the probe's x-ratelimit-remaining parsed as an integer > 0, i.e.
+    the installation's REST bucket is NOT drained and the 403 was a throttle.
+    Empty/non-numeric/0 -> False (treated as a drained bucket)."""
+    raw = _diag_value(path, "installation_probe_remaining") or ""
+    return raw.isdigit() and int(raw) > 0
+
+
 def decide() -> str:
     # A. Workflow-file edits (or an explicit action skip) always need a human.
     if skipped == "true" or edits_workflows == "true":
@@ -89,6 +167,18 @@ def decide() -> str:
 
     # B. No result event -> review never ran cleanly -> fail closed.
     if res is None:
+        # B1. File present but empty/corrupt: not trustworthy crash evidence.
+        if exec_file and os.path.isfile(exec_file):
+            return "FAIL_HARD"
+        # B2. File ABSENT: the action died before Claude ran. Structural crash
+        #     evidence from the diag file names the class; otherwise undeterminable.
+        if action_step_crashed(diag_file):
+            if installation_probe_rate_limited(diag_file):
+                if installation_probe_has_budget(diag_file):
+                    return "INSTALLATION_REST_THROTTLE_INFRA"
+                return "INSTALLATION_RATE_LIMIT_INFRA"
+            return "NO_EXEC_FILE_INFRA"
+        # B3. No crash evidence: cause undeterminable -> fail closed.
         return "FAIL_HARD"
 
     # C. Result event errored.
