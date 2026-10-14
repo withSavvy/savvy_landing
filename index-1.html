@@ -515,7 +515,7 @@
             </div>
             Grail
         </div>
-        <a href="#" class="nav-cta js-app-cta" data-app-url>Start Free Trial</a>
+        <a href="#" class="nav-cta js-app-cta" data-app-url>Get Started Free</a>
     </nav>
 
     <!-- SECTION 1: HERO -->
@@ -524,7 +524,7 @@
             <h1>Your AI CFO for credit card <span class="serif">benefits</span></h1>
             <p class="hero-clarify">Proactive agents that track, remind, and recover the money you're already paying for — automatically.</p>
             <a href="#" class="btn-primary js-app-cta" data-app-url>
-                Start Free — 30 Days
+                Get Started Free
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
@@ -534,7 +534,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
-                    Then $19.99/mo · Cancel anytime
+                    Free, no card required
                 </span>
             </div>
         </div>
@@ -872,11 +872,11 @@
         <form class="cta-form" id="waitlistForm">
             <input type="email" id="emailInput" placeholder="Enter your email" required>
             <button type="submit" class="btn-primary" id="submitBtn">
-                Start Free Trial
+                Get Started Free
             </button>
         </form>
         <div class="form-message" id="formMessage"></div>
-        <p class="cta-note">Then $19.99/mo · Cancel anytime</p>
+        <p class="cta-note">Free, no card required</p>
     </section>
 
     <!-- FOOTER -->
@@ -892,7 +892,7 @@
     <script>
         // ============================================
         // CONNECT TO YOUR APP & BACKEND
-        // Set these to your real URLs. "Start Free Trial" / "Start free" → app URL.
+        // Set these to your real URLs. "Get Started Free" → app URL.
         // Form at bottom can keep using waitlist API or your backend (see form handler below).
         // API origin (canonical domain vs. localhost) is resolved by js/savvy-api-config.js.
         // ============================================
@@ -1012,7 +1012,7 @@
                 formMessage.className = 'form-message error';
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Start Free Trial';
+                submitBtn.textContent = 'Get Started Free';
             }
         });
     </script>
