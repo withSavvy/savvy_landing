@@ -565,9 +565,16 @@ jobs:
             --add-label gate:fixed-sonnet || true
 
       # ── SONNET REVIEW-ONLY PASS (when one-shot already used) ────────────
+      # [wo:opus-gate-reviewer-fails-its-own-permission-check-on-the-shared-app-installation]
+      # Also runs as a FALLBACK when claude_review ran but wrote no execution file:
+      # the fix pass died at setup on the shared savvy-gate-bot installation
+      # (146412380) hourly REST quota (GET /users/{actor} 403s before Claude
+      # starts). This step is on GITHUB_TOKEN, a separate quota, so the PR still
+      # gets a real review. The fixer stays on the App token (only an App push
+      # re-triggers this gate) and its one-shot label is not stamped on a crash.
       - uses: anthropics/claude-code-action@v1
         id: claude_review_only
-        if: steps.floor_check.conclusion == 'success' && steps.loop_guard.outputs.review_only == 'true'
+        if: steps.floor_check.conclusion == 'success' && (steps.loop_guard.outputs.review_only == 'true' || (steps.claude_review.outcome != 'skipped' && steps.claude_review.outputs.execution_file == ''))
         continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -577,7 +584,7 @@ jobs:
             --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
           prompt: |
             You are the Sonnet reviewer (Tier 1) in the savvy_landing gate — REVIEW-ONLY pass.
-            Your one-shot fix pass has already been used on this PR (label gate:fixed-sonnet is set).
+            ${{ steps.loop_guard.outputs.review_only == 'true' && 'Your one-shot fix pass has already been used on this PR (label gate:fixed-sonnet is set).' || 'The fix pass did not get past setup this run, so this is a review-only pass and the one-shot fix pass is still unused.' }}
             Do NOT push any commits. Review the PR and report findings only.
 
             QUALITY KITS (mandatory — full definitions in .claude/review-kits.md):
@@ -1174,9 +1181,16 @@ jobs:
             --add-label gate:fixed-opus || true
 
       # ── OPUS REVIEW-ONLY PASS (when one-shot already used) ──────────────
+      # [wo:opus-gate-reviewer-fails-its-own-permission-check-on-the-shared-app-installation]
+      # Also runs as a FALLBACK when opus_review ran but wrote no execution file:
+      # the fix pass died at setup on the shared savvy-gate-bot installation
+      # (146412380) hourly REST quota (GET /users/{actor} 403s before Claude
+      # starts). This step is on GITHUB_TOKEN, a separate quota, so the PR still
+      # gets a real review. The fixer stays on the App token (only an App push
+      # re-triggers this gate) and its one-shot label is not stamped on a crash.
       - uses: anthropics/claude-code-action@v1
         id: opus_review_only
-        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && steps.loop_guard.outputs.review_only == 'true'
+        if: steps.floor_check.conclusion == 'success' && steps.risk_tier.outputs.tier == 'high' && (steps.loop_guard.outputs.review_only == 'true' || (steps.opus_review.outcome != 'skipped' && steps.opus_review.outputs.execution_file == ''))
         continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -1186,7 +1200,7 @@ jobs:
             --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
           prompt: |
             You are the Opus final decider (Tier 2) in the savvy_landing gate — REVIEW-ONLY pass.
-            Your one-shot fix pass has already been used on this PR (label gate:fixed-opus is set).
+            ${{ steps.loop_guard.outputs.review_only == 'true' && 'Your one-shot fix pass has already been used on this PR (label gate:fixed-opus is set).' || 'The fix pass did not get past setup this run, so this is a review-only pass and the one-shot fix pass is still unused.' }}
             Do NOT push any commits. Review all upstream signals and make the binding terminal decision.
             Do NOT post your own PR comment — the workflow records your reasoning automatically.
             ── READING THE DIFF (avoid direction errors) ─────────
