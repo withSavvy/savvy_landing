@@ -118,7 +118,11 @@ fi
 
 # Origins that appear in the HTML but are NOT subresource loads, so they need
 # no CSP allowance. Anything here is a deliberate, reviewed classification.
-#   heygrail.ai         <link rel=canonical> / og:url — first party, 'self'
+#   heygrail.ai         <a href> navigation left in body copy (same site,
+#                       still served), e.g. sms-consent.html
+#   heygrail.tech       canonical marketing host: <link rel=canonical>, og:url,
+#                       og:image / twitter:image and JSON-LD url strings are
+#                       metadata the page itself never fetches
 #   app.withsavvy.ai    <a href> navigation to the app (CSP does not gate nav)
 #   plaid.com           <a href> navigation, privacy.html
 #   my.plaid.com        <a href> navigation, privacy.html
@@ -128,6 +132,7 @@ fi
 #                       localhost, so this branch is dead in production
 NON_SUBRESOURCE_ORIGINS=(
   "https://heygrail.ai"
+  "https://heygrail.tech"
   "https://app.withsavvy.ai"
   "https://plaid.com"
   "https://my.plaid.com"
