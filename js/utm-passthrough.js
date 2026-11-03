@@ -1,6 +1,7 @@
-// Forwards UTM params from this page's URL onto every app.withsavvy.ai link
-// and the hero audit form, so they survive the cross-origin click-through
-// (sessionStorage written here never reaches app.withsavvy.ai).
+// Forwards UTM params from this page's URL onto every link to the app
+// (app.heygrail.tech and app.withsavvy.ai) and the hero audit form, so they
+// survive the cross-origin click-through (sessionStorage written here never
+// reaches the app origin).
 // On index.html the hero form's submit handler and the card-pick CTAs build
 // their URLs in appUrl(), which forwards the same keys itself: that handler
 // never reads the hidden inputs added below, and syncCtas() overwrites the
@@ -8,11 +9,16 @@
 (function () {
     'use strict';
 
-    var APP_ORIGIN = 'https://app.withsavvy.ai';
+    // Both hosts serve the same app. The generated card pages under cards/ load
+    // this script and keep app.withsavvy.ai links until they are regenerated, so
+    // both origins stay in the list. Matching is by exact origin, never by prefix.
+    var APP_ORIGINS = ['https://app.heygrail.tech', 'https://app.withsavvy.ai'];
     var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
 
     function buildForwardedHref(href, params) {
-        if (typeof href !== 'string' || href.indexOf(APP_ORIGIN) !== 0) {
+        if (typeof href !== 'string' || !APP_ORIGINS.some(function (origin) {
+            return href.indexOf(origin) === 0;
+        })) {
             return href;
         }
         var url;
@@ -22,8 +28,9 @@
             return href;
         }
         // Exact-origin check (not just prefix) so a lookalike host like
-        // "https://app.withsavvy.ai.evil.com" is never rewritten.
-        if (url.origin !== APP_ORIGIN) {
+        // "https://app.withsavvy.ai.evil.com" or "https://app.heygrail.tech.evil.com"
+        // is never rewritten.
+        if (APP_ORIGINS.indexOf(url.origin) === -1) {
             return href;
         }
         Object.keys(params).forEach(function (key) {
@@ -53,7 +60,9 @@
             return;
         }
 
-        var anchors = document.querySelectorAll('a[href^="' + APP_ORIGIN + '"]');
+        var anchors = document.querySelectorAll(APP_ORIGINS.map(function (origin) {
+            return 'a[href^="' + origin + '"]';
+        }).join(','));
         anchors.forEach(function (anchor) {
             var forwarded = buildForwardedHref(anchor.href, params);
             if (forwarded !== anchor.href) {
