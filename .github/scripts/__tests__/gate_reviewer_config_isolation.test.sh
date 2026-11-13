@@ -19,13 +19,12 @@ fail() { echo "FAIL: $*"; FAILS=$((FAILS + 1)); }
 pass() { echo "ok:   $*"; }
 
 # Line-scan a workflow file (stdlib only). Prints one violation per line;
-# empty output means every assertion (a)-(d) holds.
+# empty output means every assertion (a)-(d), (f) holds.
 check_gate() {
   python3 - "$1" <<'PY'
 import re, sys
 
-EXPECTED = {"claude_review": False, "claude_review_only": True,
-            "opus_review": False, "opus_review_only": True}
+EXPECTED = {"claude_review", "claude_review_only", "opus_review", "opus_review_only"}
 lines = open(sys.argv[1]).read().split("\n")
 out = []
 
@@ -71,12 +70,12 @@ for jname, steps in jobs.items():
             out.append(f"(b) {sid}: missing --setting-sources local")
         if "--strict-mcp-config" not in args:
             out.append(f"(b) {sid}: missing --strict-mcp-config")
-        if sid in EXPECTED:
-            has = "--restricted" in args
-            if EXPECTED[sid] and not has:
-                out.append(f"(d) {sid}: review-only step missing --restricted")
-            if not EXPECTED[sid] and has:
-                out.append(f"(d) {sid}: fixer step must not have --restricted")
+        if "--restricted" in args:
+            tm = re.search(r"(?<![\w-])--tools\s+(\"[^\"]*\"|'[^']*'|\S+)", args)
+            if not tm or not re.search(r"(?<![\w])Bash(\(|,|$|\s|\"|')", tm.group(1)):
+                out.append(f"(d) {sid}: --restricted without --tools naming Bash")
+        if not re.search(r"--allowedTools(\s|=)", args):
+            out.append(f"(f) {sid}: missing --allowedTools")
 
 for sid in EXPECTED:
     if sid not in found:
@@ -84,6 +83,18 @@ for sid in EXPECTED:
 for sid in found:
     if sid not in EXPECTED:
         out.append(f"(a) unexpected claude-code-action step {sid}")
+
+env_val = None
+for ln in lines:
+    em = re.match(r"^\s*GATE_REVIEWER_ALLOWED_TOOLS:\s*\"([^\"]*)\"\s*$", ln)
+    if em:
+        env_val = em.group(1)
+if env_val is None:
+    out.append("(f) GATE_REVIEWER_ALLOWED_TOOLS env entry not found")
+else:
+    for need in ("Bash(git diff:*)", "Bash(gh pr diff:*)"):
+        if need not in env_val:
+            out.append(f"(f) GATE_REVIEWER_ALLOWED_TOOLS missing {need}")
 
 for i, ln in enumerate(lines, 1):
     for m in re.finditer(r"--setting-sources(?:\s+(\S+))?", ln):
@@ -97,7 +108,7 @@ PY
 
 echo "== gate.yml assertions =="
 viol="$(check_gate "$GATE")"
-if [ -z "$viol" ]; then pass "gate.yml (a)-(d)"; else
+if [ -z "$viol" ]; then pass "gate.yml (a)-(d), (f)"; else
   while IFS= read -r v; do fail "$v"; done <<<"$viol"
 fi
 
@@ -123,6 +134,14 @@ elif mode == "empty-sources":
     t = t.replace("--setting-sources local", '--setting-sources ""', 1)
 elif mode == "user-sources":
     t = t.replace("--setting-sources local", "--setting-sources user", 1)
+elif mode == "restrict-review-only":
+    i = t.index("id: claude_review_only")
+    j = t.index("--strict-mcp-config", i) + len("--strict-mcp-config")
+    t = t[:j] + " --restricted" + t[j:]
+elif mode == "drop-diff-pattern":
+    t = re.sub(r'(GATE_REVIEWER_ALLOWED_TOOLS: "[^"\n]*?)Bash\(gh pr diff:\*\),', r"\1", t, count=1)
+if t == open(src).read():
+    sys.exit("mutation mode %s did not change the file" % mode)
 open(dst, "w").write(t)
 PY
   if [ -z "$(check_gate "$out")" ]; then fail "mutation '$name' not detected"; else pass "mutation '$name' detected"; fi
@@ -131,6 +150,8 @@ mutate "drop --strict-mcp-config" drop-strict
 mutate "drop a strip step" drop-strip
 mutate "empty --setting-sources" empty-sources
 mutate "--setting-sources user" user-sources
+mutate "--restricted without --tools on a review-only step" restrict-review-only
+mutate "drop gh pr diff from allowed tools" drop-diff-pattern
 
 echo "== strip script behaviour =="
 if [ ! -x "$STRIP" ]; then

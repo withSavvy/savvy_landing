@@ -597,7 +597,7 @@ jobs:
           claude_args: |
             --model claude-sonnet-4-6 --max-turns 30
             --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
-            --setting-sources local --strict-mcp-config --restricted
+            --setting-sources local --strict-mcp-config
           prompt: |
             You are the Sonnet reviewer (Tier 1) in the savvy_landing gate — REVIEW-ONLY pass.
             ${{ steps.loop_guard.outputs.review_only == 'true' && 'Your one-shot fix pass has already been used on this PR (label gate:fixed-sonnet is set).' || 'The fix pass did not get past setup this run, so this is a review-only pass and the one-shot fix pass is still unused.' }}
@@ -1229,7 +1229,7 @@ jobs:
           claude_args: |
             --model ${{ vars.OPUS_GATE_MODEL || 'claude-opus-4-8' }} --max-turns 20
             --allowedTools "${{ env.GATE_REVIEWER_ALLOWED_TOOLS }}"
-            --setting-sources local --strict-mcp-config --restricted
+            --setting-sources local --strict-mcp-config
           prompt: |
             You are the Opus final decider (Tier 2) in the savvy_landing gate — REVIEW-ONLY pass.
             ${{ steps.loop_guard.outputs.review_only == 'true' && 'Your one-shot fix pass has already been used on this PR (label gate:fixed-opus is set).' || 'The fix pass did not get past setup this run, so this is a review-only pass and the one-shot fix pass is still unused.' }}
