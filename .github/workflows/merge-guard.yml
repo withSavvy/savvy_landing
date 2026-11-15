@@ -282,8 +282,8 @@ jobs:
           # merge-guard is added to the ruleset. The control a PR cannot edit is
           # CODEOWNERS read from the BASE branch: `/.github/` and
           # `/.claude/scripts/` are owned by @Sara3 and the required-flip step turns
-          # on require-code-owner-review. The SHA-bound human override and the
-          # break-glass workflow-pr-admin-merge are the intended ways through.
+          # on require-code-owner-review. The SHA-bound human override is the
+          # intended way through.
           #
           # The pattern is the shared CI-surface definition in
           # .github/scripts/ci_surface_paths.sh (this job has no checkout, so the

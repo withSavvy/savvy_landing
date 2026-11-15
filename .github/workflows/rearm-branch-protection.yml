@@ -3,27 +3,20 @@ name: Re-arm Branch Protection
 #
 # A STANDALONE, dispatch-only re-arm for `enforce_admins` on main.
 #
-# WHY THIS EXISTS SEPARATELY FROM workflow-pr-admin-merge.yml
+# WHY THIS EXISTS AS A STANDALONE WORKFLOW
 #
-# Until #9017, that workflow's re-enable step called `gh api ... --silent
-# --fail-with-body`. `--fail-with-body` is a curl flag, not a `gh api` flag,
-# so gh exited 1 during ARGUMENT PARSING and the POST never went out. Every
-# break-glass it performed between 2026-08-11 and 2026-08-19 ended with main
-# UNPROTECTED, while the workflow's own failure comment asserted the opposite.
-#
-# #9017 fixed that path. But it only re-arms as part of a break-glass, which
-# first DISABLES protection and merges a PR. That makes it useless as a
-# recovery tool: to close an open protection gap you would have to open a new
-# one and land a merge you may not want. There was no way to simply turn
-# protection back on.
+# A re-arm that only happens as part of a break-glass merge (which first
+# DISABLES protection) is useless as a recovery tool: closing an open
+# protection gap would mean opening a new one. This workflow simply turns
+# protection back on, with no merge involved.
 #
 # This workflow is that missing tool. It NEVER disables anything and NEVER
 # merges anything — it only turns enforce_admins ON and then reads it back to
 # prove it. Safe to run at any time; if protection is already armed the POST
 # is idempotent.
 #
-# Secrets: AUTOMATION_ADMIN_PAT — the same repo-admin PAT
-# workflow-pr-admin-merge.yml uses. No fallback to GITHUB_TOKEN: a token that
+# Secrets: AUTOMATION_ADMIN_PAT — the repo-admin PAT (dispatch-only workflow,
+# never started by a pull request). No fallback to GITHUB_TOKEN: a token that
 # cannot set protection must fail loudly, never appear to succeed.
 
 on:
@@ -38,7 +31,7 @@ on:
 permissions:
   contents: read
 
-# Serialize against the break-glass workflow: enforce_admins is a single
+# Serialize against any break-glass admin merge (group name kept for that): enforce_admins is a single
 # repo-level switch, and a re-arm racing a deliberate break-glass disable
 # would re-protect main mid-merge.
 concurrency:

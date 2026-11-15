@@ -59,6 +59,10 @@ jobs:
         with:
           app-id: ${{ secrets.GATE_APP_ID }}
           private-key: ${{ secrets.GATE_APP_PRIVATE_KEY }}
+          permission-checks: write
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
 
       - name: Check for hold conditions and arm
         env:
