@@ -1,6 +1,6 @@
-# Savvy Landing
+# Grail Landing
 
-**Marketing site for Savvy** — static landing page. Loosely connected to the main [Savvy](https://github.com/Sara3/savvy) app (credit card benefit tracker); this repo is **standalone** and has its **own GitHub repository**.
+**Marketing site for Grail** — static landing page. Loosely connected to the main [Grail](https://github.com/Sara3/savvy) app (credit card benefit tracker); this repo is **standalone** and has its **own GitHub repository**.
 
 - **Live site (Cloudflare Workers):** https://heygrail.ai/
 - **Waitlist API (Render):** the waitlist server lives in a local-only `backend/` checkout that is NOT tracked in this repo (removed as a submodule in `01c8853`; see `.gitignore`). Static pages call the production API at `https://api.withsavvy.ai` via `js/savvy-api-config.js`.
@@ -49,12 +49,12 @@ The CNAME for `heygrail.ai` is already configured in DNS. To point a different c
 
 - **Render:** the waitlist API is deployed from the local-only `backend/` checkout, not from this repo.
 
-## Repo vs main Savvy app
+## Repo vs main Grail app
 
 - **This repo:** marketing site only. Its own repo, its own README, its own deploy (Cloudflare Workers; see Deploy above). The waitlist backend is not in this repo.
-- **Main app:** [Savvy](https://github.com/Sara3/savvy) — backend + frontend for the product; separate repo(s).
+- **Main app:** [Grail](https://github.com/Sara3/savvy) — backend + frontend for the product; separate repo(s).
 
 ## See also
 
 - **Analytics:** `ANALYTICS.md` — GA4 and optional page-view logging.
-- **Main Savvy:** https://github.com/Sara3/savvy
+- **Main Grail app:** https://github.com/Sara3/savvy
